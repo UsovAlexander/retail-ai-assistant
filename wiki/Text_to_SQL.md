@@ -21,6 +21,15 @@ Source: `raw/project_spec_en.md` §5.2. **Status: not yet implemented (stage 4).
 - Force a `LIMIT` if absent.
 - Restrict to `retail_demo` tables.
 
+## Dialect / correctness rules to encode in the prompt (stage 4)
+
+- Revenue is always `sum(quantity * price * (1 - discount_pct/100))`.
+- **Avoid join fan-out when aggregating the fact table against `plans`**: never
+  `JOIN plans → sales` and then `sum(plan_revenue)` (it multiplies the plan by
+  the number of matching sales rows). Aggregate `plans` and `sales` in separate
+  subqueries, then join on `store_id` (and month). Discovered at stage 3 — see
+  [[Qdrant_Collections]]; the corrected pattern is few-shot example #18.
+
 ## Open questions / decisions
 
 - _(to be filled at stage 4)_

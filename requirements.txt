@@ -17,6 +17,7 @@ Faker~=33.1                  # synthetic names/titles, ru_RU locale
 # --- LLM & embeddings (stages 3+) ---
 openai~=1.54                 # Ollama's OpenAI-compatible API client
 sentence-transformers~=3.3   # cointegrated/LaBSE-en-ru embeddings
+torch>=2.2,<3                # backend for sentence-transformers (CPU/MPS wheels)
 
 # --- Artifacts (stage 5) ---
 matplotlib~=3.9              # charts → PNG (Agg backend)

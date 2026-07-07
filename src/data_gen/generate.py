@@ -406,10 +406,15 @@ def gen_plans(
             k = (store.store_id, key_month)
             monthly[k] = monthly.get(k, 0.0) + store_factors[store.store_id] * w * scale
 
+    # Persistent per-store ambition: some stores get consistently ambitious
+    # (>1) plans they tend to miss, others lax (<1) plans they tend to beat.
+    # Combined with small monthly noise this yields a real plan-vs-actual mix.
+    ambition = {s.store_id: rng.uniform(0.90, 1.12) for s in stores}
+
     plans: list[Plan] = []
     for (store_id, (year, month)), exp_sales in monthly.items():
-        plan_mult = rng.uniform(0.85, 1.15)
-        plan_revenue = int(exp_sales * avg_sale_revenue * plan_mult)
+        month_noise = rng.uniform(0.96, 1.04)
+        plan_revenue = int(exp_sales * avg_sale_revenue * ambition[store_id] * month_noise)
         plans.append(Plan(store_id, dt.date(year, month, 1), plan_revenue))
     return plans
 
@@ -561,8 +566,10 @@ def main() -> None:
         )
         scale = TARGET_SALES / total_weight
 
+        # Expected revenue per sale ≈ mean catalog price × mean quantity (~1.23)
+        # × (1 − mean discount ~0.065). Calibrated so total plan ≈ total actual.
         avg_sale_revenue = (
-            sum(p.price for p in products) / len(products) * 1.20 * 0.92
+            sum(p.price for p in products) / len(products) * 1.23 * 0.935
         )
         plans = gen_plans(rng, stores, store_factors, days, scale, avg_sale_revenue)
 

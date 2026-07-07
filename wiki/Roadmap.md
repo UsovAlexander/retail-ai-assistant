@@ -8,8 +8,10 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   availability checks (`python -m src.check_env`).
 - [x] **Stage 2 — Synthetic data generator.** `retail_demo`, all 6 tables
   (994,892 sales, 2024–2026); seasonal + store-tier patterns verified. → [[Data]]
-- [ ] **Stage 3 — Qdrant collections.** `retail_schema` + `retail_few_shot`
-  (20–30 manual few-shot examples). → [[Qdrant_Collections]]
+- [x] **Stage 3 — Qdrant collections.** `retail_schema` (6) + `retail_few_shot`
+  (26 validated examples); LaBSE 768-d/cosine; retrieval smoke-tested. Also
+  fixed a plan-vs-actual data-realism issue + a few-shot fan-out bug.
+  → [[Qdrant_Collections]]
 - [ ] **Stage 4 — Text-to-SQL core.** `sql_generator` + `validator`; verify on
   5–10 questions. → [[Text_to_SQL]]
 - [ ] **Stage 5 — Chart builder + Excel exporter** (with unit tests). → [[Artifacts]]
@@ -25,5 +27,7 @@ one commit per stage (`stage N: ...`); update the wiki after each.
 - **Stage 1** — skeleton + `check_env` verifying all three live services. _(done)_
 - **Stage 2** — generator built; `retail_demo` populated (995k sales); sanity
   queries confirm Dec + Feb–Mar peaks and leader/laggard store tiers. Actual
-  numbers in [[Data]]. _(done)_
-- **Next: Stage 3** — Qdrant collections `retail_schema` + `retail_few_shot`.
+  numbers in [[Data]]. _(done; plan-vs-actual recalibrated at stage 3)_
+- **Stage 3** — both Qdrant collections built (schema 6, few-shot 26), LaBSE
+  embeddings, retrieval verified; other collections untouched. _(done)_
+- **Next: Stage 4** — Text-to-SQL core (`sql_generator` + `validator`).

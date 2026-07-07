@@ -80,6 +80,10 @@ Row counts: `stores 50`, `departments 15`, `employees 500`, `products 2,000`,
   soft summer (Jul ₽7.5B). Weekend uplift baked in via `WEEKDAY_FACTOR`.
 - **Store tiers**: top store ≈ ₽5.7B vs bottom ≈ ₽0.75B (~8× spread) — 3 leaders
   (factor 2.0–2.6) and 3 laggards (0.30–0.45) plus a log-normal middle.
+- **Plan vs actual (2025)**: total actual/plan ≈ 1.02; **20 stores miss, 30 beat**
+  their annual plan — a genuine mix (not all-beat / all-miss). Achieved via a
+  *persistent per-store ambition factor* (0.90–1.12) plus monthly noise, with
+  `avg_sale_revenue` calibrated to the real avg check (₽125.6k).
 
 Revenue formula used everywhere: `sum(quantity * price * (1 - discount_pct/100))`.
 
@@ -104,8 +108,9 @@ Revenue formula used everywhere: `sum(quantity * price * (1 - discount_pct/100))
 - **Sales realism model**: per-(store, day) expected count =
   `store_factor × month_factor × weekday_factor × scale`; within a cell,
   employees are drawn weighted by a per-rep log-normal skill factor, products by
-  a log-normal popularity factor. `plans.plan_revenue` is derived from the same
-  expected-sales weights × avg sale revenue × a per-(store,month) multiplier
-  (0.85–1.15), so plan-vs-actual is meaningful (some stores beat, some miss).
+  a log-normal popularity factor. `plans.plan_revenue` = expected-sales weights ×
+  calibrated `avg_sale_revenue` × a **persistent per-store ambition factor**
+  (0.90–1.12) × monthly noise (0.96–1.04), so plan-vs-actual is meaningful
+  (20 miss / 30 beat, not all one way).
 - **`price` vs `discount_pct`**: `sales.price` is the product's base retail price;
   the realized discount lives in `discount_pct`. Revenue must apply the discount.
