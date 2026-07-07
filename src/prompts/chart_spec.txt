@@ -1,0 +1,3 @@
+[Stage 5] Chart-spec system prompt goes here.
+Given a question and result columns, output JSON:
+{"chart_type": "line|bar|barh|pie", "x": "col", "y": "col", "title": "...", "hue": "col|null"}

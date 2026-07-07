@@ -1,0 +1,3 @@
+[Stage 6] Intent-router system prompt goes here.
+Classifies a user question into one of: sql_query, sql_with_chart, sql_with_excel, chitchat.
+Output: JSON only.

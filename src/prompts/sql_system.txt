@@ -1,0 +1,3 @@
+[Stage 4] Text-to-SQL system prompt goes here.
+ClickHouse dialect rules; SELECT-only; use only retail_demo tables; always add LIMIT.
+Retrieved schema and few-shot examples are appended by the pipeline.

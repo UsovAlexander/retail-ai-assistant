@@ -1,0 +1,31 @@
+# Retail AI Assistant — pinned major versions (Python 3.11+)
+# Install: pip install -r requirements.txt
+# NOTE: the ML stack (torch/sentence-transformers) is most reliable on
+# Python 3.11–3.12. Stages 1–2 only need clickhouse-connect + faker + pydantic.
+
+# --- Core config & data access ---
+clickhouse-connect~=0.8      # ClickHouse client over the HTTP interface (8123)
+qdrant-client~=1.12          # Qdrant vector store client
+httpx~=0.27                  # HTTP checks for Qdrant/Ollama (check_env)
+python-dotenv~=1.0           # load .env
+pydantic~=2.9                # data structures / validation
+pydantic-settings~=2.6       # settings from .env
+
+# --- Data generation (stage 2) ---
+Faker~=33.1                  # synthetic names/titles, ru_RU locale
+
+# --- LLM & embeddings (stages 3+) ---
+openai~=1.54                 # Ollama's OpenAI-compatible API client
+sentence-transformers~=3.3   # cointegrated/LaBSE-en-ru embeddings
+
+# --- Artifacts (stage 5) ---
+matplotlib~=3.9              # charts → PNG (Agg backend)
+openpyxl~=3.1                # Excel export
+pandas~=2.2                  # tabular handling for exports/eval
+
+# --- Interfaces (stages 8–9) ---
+streamlit~=1.40              # desktop chat UI
+aiogram~=3.15                # Telegram bot
+
+# --- Dev / tests ---
+pytest~=8.3

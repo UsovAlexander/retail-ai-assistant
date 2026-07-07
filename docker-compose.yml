@@ -1,0 +1,32 @@
+# Convenience stack for contributors WITHOUT local installs of ClickHouse/Qdrant.
+# On the primary dev machine these services already run natively — this file is
+# only for cloning the repo elsewhere. Ollama is expected to run on the host
+# (install separately and `ollama pull qwen2.5-coder:14b`).
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    ports:
+      - "8123:8123"   # HTTP interface
+      - "9000:9000"   # native protocol
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: "1234"
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ch_data:/var/lib/clickhouse
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    ports:
+      - "6333:6333"   # REST
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  ch_data:
+  qdrant_data:

@@ -1,0 +1,23 @@
+# Raw source material for the LLM Wiki (kept local, per project setup)
+raw/
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Artifacts produced by the core (charts, exports)
+artifacts/
+*.png
+*.xlsx
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
