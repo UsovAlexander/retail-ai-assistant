@@ -64,15 +64,48 @@ etc.; metals gold 585 / silver 925 / platinum). All money in **RUB**.
 - Multipliers: month-of-year factor, day-of-week factor, per-store tier factor,
   per-employee skill factor — combined into a daily expected sales count.
 
+## Actuals (stage 2, seed=42) — VERIFIED
+
+Row counts: `stores 50`, `departments 15`, `employees 500`, `products 2,000`,
+`sales 994,892`, `plans 1,800`. History window **2024-01-01 … 2026-12-31**
+(three full calendar years, `plans` = 50 stores × 36 months). Generation ~3s.
+
+> **Note:** the window extends past "today" (2026-07-07) — Jul–Dec 2026 are
+> future-dated sales. This is a deliberate config choice (`DATE_END`), a
+> deviation from the spec's "2 years of history"; kept intentionally.
+
+- **Revenue by year**: 2024 ≈ ₽41.7B, 2025 ≈ ₽41.7B, 2026 ≈ ₽41.5B (balanced).
+- **Seasonality (revenue by month-of-year, all years)** — peaks clearly visible:
+  Dec ₽18.2B (top), Mar ₽15.3B, Feb ₽12.5B, Nov ₽11.2B; trough Jan ₽7.0B,
+  soft summer (Jul ₽7.5B). Weekend uplift baked in via `WEEKDAY_FACTOR`.
+- **Store tiers**: top store ≈ ₽5.7B vs bottom ≈ ₽0.75B (~8× spread) — 3 leaders
+  (factor 2.0–2.6) and 3 laggards (0.30–0.45) plus a log-normal middle.
+
+Revenue formula used everywhere: `sum(quantity * price * (1 - discount_pct/100))`.
+
 ## Verification queries (run at end of stage 2)
 
-- Total revenue by year.
-- Monthly revenue curve — Dec + Feb–Mar peaks must be visible.
-- Top-5 vs bottom-5 stores by revenue.
-- Row counts per table.
+- Total revenue by year · monthly revenue curve (Dec + Feb–Mar peaks) ·
+  top-5 vs bottom-5 stores · row counts per table. All confirmed.
 
 ## Open questions / decisions
 
 - **CH client library**: `clickhouse-connect` over the HTTP interface (8123).
-  Chosen for a maintained, pure-Python API with efficient bulk insert.
-- **Actuals** (row counts, revenue numbers) recorded here after stage 2 runs.
+  Maintained, pure-Python, efficient bulk insert. Shared helper: `src/db.py`
+  (`get_client(database)`; connect with no DB to DROP/CREATE `retail_demo`).
+  `src/db.py` is not in the spec §7 tree — added deliberately so `check_env`
+  and the generator share one connection factory.
+- **History window**: full calendar years **2024–2026** (`DATE_START`/`DATE_END`).
+  Extends past today (2026-07-07), so it contains future-dated sales — a
+  deliberate deviation from the spec's "2 years". Full years keep year-over-year
+  and seasonality clean in the demo.
+- **Target rows**: `TARGET_SALES = 995_000` (stochastic rounding lands at
+  995,056) — deliberately under the 1M cap (spec §12) while still "~1M".
+- **Sales realism model**: per-(store, day) expected count =
+  `store_factor × month_factor × weekday_factor × scale`; within a cell,
+  employees are drawn weighted by a per-rep log-normal skill factor, products by
+  a log-normal popularity factor. `plans.plan_revenue` is derived from the same
+  expected-sales weights × avg sale revenue × a per-(store,month) multiplier
+  (0.85–1.15), so plan-vs-actual is meaningful (some stores beat, some miss).
+- **`price` vs `discount_pct`**: `sales.price` is the product's base retail price;
+  the realized discount lives in `discount_pct`. Revenue must apply the discount.

@@ -6,8 +6,8 @@ one commit per stage (`stage N: ...`); update the wiki after each.
 - [x] **Stage 1 — Project skeleton.** Folder structure, `config.py`,
   `requirements.txt`, `.env.example`, connections to CH/Qdrant/Ollama with
   availability checks (`python -m src.check_env`).
-- [ ] **Stage 2 — Synthetic data generator.** `retail_demo`, all 6 tables;
-  seasonal peaks visible via a simple query. → [[Data]]
+- [x] **Stage 2 — Synthetic data generator.** `retail_demo`, all 6 tables
+  (994,892 sales, 2024–2026); seasonal + store-tier patterns verified. → [[Data]]
 - [ ] **Stage 3 — Qdrant collections.** `retail_schema` + `retail_few_shot`
   (20–30 manual few-shot examples). → [[Qdrant_Collections]]
 - [ ] **Stage 4 — Text-to-SQL core.** `sql_generator` + `validator`; verify on
@@ -23,4 +23,7 @@ one commit per stage (`stage N: ...`); update the wiki after each.
 ## Status log
 
 - **Stage 1** — skeleton + `check_env` verifying all three live services. _(done)_
-- **Stage 2** — in progress.
+- **Stage 2** — generator built; `retail_demo` populated (995k sales); sanity
+  queries confirm Dec + Feb–Mar peaks and leader/laggard store tiers. Actual
+  numbers in [[Data]]. _(done)_
+- **Next: Stage 3** — Qdrant collections `retail_schema` + `retail_few_shot`.
