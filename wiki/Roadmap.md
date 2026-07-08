@@ -15,7 +15,8 @@ one commit per stage (`stage N: ...`); update the wiki after each.
 - [x] **Stage 4 — Text-to-SQL core.** `llm_client` + `sql_generator` (schema RAG
   + few-shot RAG + retry) + `validator`; verified 8/8 execute on manual
   questions. → [[Text_to_SQL]]
-- [ ] **Stage 5 — Chart builder + Excel exporter** (with unit tests). → [[Artifacts]]
+- [x] **Stage 5 — Chart builder + Excel exporter** (27 unit tests; charts
+  eyeballed on real data). → [[Artifacts]]
 - [ ] **Stage 6 — Orchestrator + summarizer.** Full core, `core.ask()` end-to-end.
 - [ ] **Stage 7 — Eval.** 30 questions, execution + result accuracy → `eval/results.md`.
   → [[Evaluation]]
@@ -34,4 +35,7 @@ one commit per stage (`stage N: ...`); update the wiki after each.
 - **Stage 4** — text-to-SQL pipeline works end-to-end (RAG → Ollama → validate →
   execute, ≤3 retries). 8/8 manual questions execute; one nested count-over-HAVING
   shape noted as a known limitation. _(done)_
-- **Next: Stage 5** — chart builder + Excel exporter (with unit tests).
+- **Stage 5** — `chart_builder` (LLM spec → matplotlib PNG, validated palette) +
+  `excel_exporter` (openpyxl); 27 unit tests pass; real charts rendered &
+  eyeballed. _(done)_
+- **Next: Stage 6** — orchestrator + summarizer; `core.ask()` end-to-end.
