@@ -27,6 +27,27 @@ Source: `raw/project_spec_en.md` §7 (`eval/`), §8 stage 7. **Status: done (sta
 By category: `top_n` 100%, `aggregation` 80%, `join` 60%, `time_series` 50%,
 `plan_vs_actual` 50%, `window` 50% exec / 50% result. Full report: `eval/results.md`.
 
+## Model comparison — local vs external (Groq)
+
+Same 30 questions, same pipeline; only the LLM backend differs (see [[Architecture]]
+LLM backend). Full Groq report: `eval/results_groq.md`.
+
+| Backend | Model | Execution | Result | Avg attempts |
+|---|---|---|---|---|
+| local (default) | `qwen2.5-coder:14b` (Ollama) | 97% (29/30) | 70% (21/30) | 1.10 |
+| external | `llama-3.3-70b-versatile` (Groq) | **100%** (30/30) | **77%** (23/30) | **1.00** |
+
+Category deltas (result accuracy): the external model lifts `join` 60→100% and
+`window` result 50→ (exec 75→100%, it fixed the year-over-year window local
+couldn't run), needing **zero retries** (avg 1.00 vs 1.10). It fixed local's
+genuine errors — fan-out on "by format" (Q10), silver-share-of-total (Q12),
+weekend = Sat/Sun (Q14), the YoY window (Q24). Its remaining 7 misses are mostly
+**near-correct**: rounding/precision on percentage queries (Q5, Q19, Q28), the
+extra-column case (Q22), and the two defensible interpretations (Q15 "продавцы"
+scope, Q29 top-hour) — so effective quality is materially higher than the strict
+77% suggests. Takeaway: the stronger external model is a clear upgrade for
+benchmarking, while `auto` keeps local as a zero-cost, always-available fallback.
+
 ## Failure analysis (the 9 non-matches)
 
 Categorized honestly rather than tuned away:
