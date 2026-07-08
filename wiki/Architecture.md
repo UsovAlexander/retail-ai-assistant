@@ -53,9 +53,30 @@ re-exported from `src/core/__init__.py`).
 6. Return `AssistantResponse` (text, sql, table_preview[:50], chart_path, excel_path, error).
    `ask()` never raises — failures surface in `error`/`text`.
 
+## LLM backend (local / external / auto)
+
+`src/core/llm_client.py` supports three backends via `LLM_BACKEND`:
+
+- **`local`** (default) — Ollama `qwen2.5-coder:14b`. Keeps the system fully local.
+- **`external`** — any OpenAI-compatible endpoint (`EXTERNAL_LLM_*`), e.g. **Groq**
+  `llama-3.3-70b-versatile`, to benchmark against a stronger model.
+- **`auto`** — try external first, **fall back to local** on any error / rate
+  limit / quota exhaustion (prod resilience).
+
+Precedence for each `chat()` call: explicit `backend=` arg > `use_backend(...)`
+context override (for a per-request UI toggle) > `LLM_BACKEND` config. Both
+backends use the OpenAI SDK — no extra dependency. `active_model_label()` reports
+what actually ran; the eval report and (stage 8) the desktop UI surface it.
+
+> **Deliberate deviation from spec §12** ("local Ollama only"): added on request
+> to (a) compare metrics against a stronger external model and (b) auto-fail-over
+> in prod. Mitigated: **off by default** — the "fully local" default is preserved;
+> external needs an explicit key in `.env`.
+
 ## Stack choices (rationale)
 
-- **Ollama / local** — air-gapped corporate environment; no external LLM APIs.
+- **Ollama / local** — air-gapped corporate environment by default; external
+  backend is opt-in (see above).
 - **Two RAG layers** — schema RAG grounds the model in the real tables;
   few-shot RAG gives dialect-correct, dynamic examples per question.
 - **File artifacts, not live figures** — one pipeline serves both interfaces.

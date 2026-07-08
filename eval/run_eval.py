@@ -25,6 +25,7 @@ import logging  # noqa: E402
 logging.disable(logging.INFO)
 
 from src.config import get_settings  # noqa: E402
+from src.core.llm_client import active_model_label  # noqa: E402
 from src.core.sql_generator import generate_sql  # noqa: E402
 from src.db import get_client  # noqa: E402
 
@@ -107,8 +108,8 @@ def write_report(results: list[Row], elapsed: float) -> None:
 
     lines: list[str] = []
     lines.append("# Evaluation results\n")
-    lines.append(f"_Generated {datetime.now():%Y-%m-%d %H:%M} · model "
-                 f"`{get_settings().ollama_model}` · {n} questions · {elapsed:.0f}s._\n")
+    lines.append(f"_Generated {datetime.now():%Y-%m-%d %H:%M} · backend "
+                 f"`{active_model_label()}` · {n} questions · {elapsed:.0f}s._\n")
     lines.append("## Metrics\n")
     lines.append("| Metric | Value |")
     lines.append("|---|---|")

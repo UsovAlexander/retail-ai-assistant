@@ -39,11 +39,22 @@ class Settings(BaseSettings):
     qdrant_host: str = Field(default="localhost", alias="QDRANT_HOST")
     qdrant_port: int = Field(default=6333, alias="QDRANT_PORT")
 
-    # --- Ollama (OpenAI-compatible API) ---
+    # --- Ollama (local backend; OpenAI-compatible API) ---
     ollama_base_url: str = Field(
         default="http://localhost:11434/v1", alias="OLLAMA_BASE_URL"
     )
     ollama_model: str = Field(default="qwen2.5-coder:14b", alias="OLLAMA_MODEL")
+
+    # --- LLM backend selection ---
+    # "local"    — always Ollama (default; keeps the system fully local).
+    # "external" — always the external OpenAI-compatible endpoint below.
+    # "auto"     — try external first, fall back to local on error / rate limit.
+    llm_backend: str = Field(default="local", alias="LLM_BACKEND")
+    # External backend (any OpenAI-compatible endpoint: OpenAI, Anthropic-compat,
+    # OpenRouter, ...). Off unless all three are set.
+    external_llm_base_url: str = Field(default="", alias="EXTERNAL_LLM_BASE_URL")
+    external_llm_api_key: str = Field(default="", alias="EXTERNAL_LLM_API_KEY")
+    external_llm_model: str = Field(default="", alias="EXTERNAL_LLM_MODEL")
 
     # --- Embeddings ---
     embedding_model: str = Field(
@@ -66,6 +77,24 @@ class Settings(BaseSettings):
     @classmethod
     def _upper(cls, v: str) -> str:
         return v.upper()
+
+    @field_validator("llm_backend")
+    @classmethod
+    def _valid_backend(cls, v: str) -> str:
+        v = v.strip().lower()
+        allowed = {"local", "external", "auto"}
+        if v not in allowed:
+            raise ValueError(f"LLM_BACKEND must be one of {allowed}, got '{v}'")
+        return v
+
+    @property
+    def external_configured(self) -> bool:
+        """True only when the external backend has all it needs."""
+        return bool(
+            self.external_llm_base_url
+            and self.external_llm_api_key
+            and self.external_llm_model
+        )
 
     @property
     def qdrant_url(self) -> str:
