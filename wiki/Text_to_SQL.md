@@ -1,7 +1,9 @@
 # Text-to-SQL
 
 See [[Index]]. Related: [[Qdrant_Collections]], [[Data]], [[Architecture]].
-Source: `raw/project_spec_en.md` §5.2. **Status: not yet implemented (stage 4).**
+Source: `raw/project_spec_en.md` §5.2. **Status: implemented (stage 4).**
+Entry point: `src.core.sql_generator.generate_sql(question) -> SQLResult`.
+LLM: `src.core.llm_client.chat()` (Ollama, OpenAI-compatible, temp 0.1).
 
 ## Pipeline (`src/core/sql_generator.py`)
 
@@ -14,12 +16,32 @@ Source: `raw/project_spec_en.md` §5.2. **Status: not yet implemented (stage 4).
    system tables forbidden, single statement.
 6. **Execute** in ClickHouse; on error, retry with the error text (≤3 attempts).
 
-## Validator rules (stage 4/5)
+`SQLResult` fields: `question, sql, columns, rows (list[dict]), row_count,
+attempts, error`, plus `.ok`. Prompt: `src/prompts/sql_system.txt` (system) +
+retrieved schema + examples + question (user turn). Retrieval `top_k=3` each.
 
-- Reject anything that is not a single `SELECT`.
-- Forbid DDL/DML keywords (INSERT/ALTER/DROP/CREATE/…), `system.*`, multi-statement.
-- Force a `LIMIT` if absent.
-- Restrict to `retail_demo` tables.
+## Validator rules (`src/core/validator.py`) — implemented
+
+- Strip markdown fences; require a single statement (reject inner `;`).
+- Must start with `SELECT` or `WITH`. Forbid DDL/DML keywords as whole words
+  (INSERT/UPDATE/DELETE/DROP/ALTER/CREATE/TRUNCATE/SYSTEM/SET/USE/INTO/…).
+- Forbid external/system sources: `system.`, `information_schema.`, and table
+  functions (`url/file/remote/s3/mysql/postgresql/hdfs/...`).
+- Force `LIMIT DEFAULT_LIMIT` (1000) when absent. Raises `SQLValidationError`.
+
+## Verification (stage 4) — 8 manual questions
+
+8/8 executed; ~7/8 semantically correct after prompt tuning. Retry-on-error
+recovered real ClickHouse errors on 2 questions (attempt 2). Two prompt rules
+were added after the first run: (a) only use `plans` when the question is about
+plans/targets (fixed a "по форматам" query that wrongly dragged in `plans`);
+(b) "сколько/how many" → return a single `count()`.
+
+**Known limitation** (for [[Evaluation]] to track): *count-over-HAVING* questions
+like "сколько магазинов не выполнили план" need a nested `count(*)` over a
+per-store aggregate; the 14B model tends to emit `GROUP BY store ... HAVING`
+returning one row per store instead of a single scalar. Candidate fix: add a
+nested-count few-shot example, or a post-check that wraps such shapes.
 
 ## Dialect / correctness rules to encode in the prompt (stage 4)
 
@@ -32,4 +54,10 @@ Source: `raw/project_spec_en.md` §5.2. **Status: not yet implemented (stage 4).
 
 ## Open questions / decisions
 
-- _(to be filled at stage 4)_
+- **RAG in the user turn**: system prompt = static dialect rules
+  (`sql_system.txt`); retrieved schema + examples + question go in the user turn.
+- **Retry protocol**: on validator or ClickHouse error, append the failed SQL +
+  the error to the conversation and ask for a corrected query (≤3 attempts total).
+  Validator rejections and execution errors share the same loop.
+- **Not yet using JSON mode here** — SQL is returned as raw text (fences stripped
+  by the validator). JSON mode is reserved for intent routing / chart spec (§5.1/5.3).

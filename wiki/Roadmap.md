@@ -12,8 +12,9 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   (26 validated examples); LaBSE 768-d/cosine; retrieval smoke-tested. Also
   fixed a plan-vs-actual data-realism issue + a few-shot fan-out bug.
   → [[Qdrant_Collections]]
-- [ ] **Stage 4 — Text-to-SQL core.** `sql_generator` + `validator`; verify on
-  5–10 questions. → [[Text_to_SQL]]
+- [x] **Stage 4 — Text-to-SQL core.** `llm_client` + `sql_generator` (schema RAG
+  + few-shot RAG + retry) + `validator`; verified 8/8 execute on manual
+  questions. → [[Text_to_SQL]]
 - [ ] **Stage 5 — Chart builder + Excel exporter** (with unit tests). → [[Artifacts]]
 - [ ] **Stage 6 — Orchestrator + summarizer.** Full core, `core.ask()` end-to-end.
 - [ ] **Stage 7 — Eval.** 30 questions, execution + result accuracy → `eval/results.md`.
@@ -30,4 +31,7 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   numbers in [[Data]]. _(done; plan-vs-actual recalibrated at stage 3)_
 - **Stage 3** — both Qdrant collections built (schema 6, few-shot 26), LaBSE
   embeddings, retrieval verified; other collections untouched. _(done)_
-- **Next: Stage 4** — Text-to-SQL core (`sql_generator` + `validator`).
+- **Stage 4** — text-to-SQL pipeline works end-to-end (RAG → Ollama → validate →
+  execute, ≤3 retries). 8/8 manual questions execute; one nested count-over-HAVING
+  shape noted as a known limitation. _(done)_
+- **Next: Stage 5** — chart builder + Excel exporter (with unit tests).
