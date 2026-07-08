@@ -19,8 +19,8 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   eyeballed on real data). → [[Artifacts]]
 - [x] **Stage 6 — Orchestrator + summarizer.** Full core, `core.ask()` verified
   end-to-end on all four intents. → [[Architecture]]
-- [ ] **Stage 7 — Eval.** 30 questions, execution + result accuracy → `eval/results.md`.
-  → [[Evaluation]]
+- [x] **Stage 7 — Eval.** 30 questions; execution 97% / result 70% (denotation
+  match) → `eval/results.md`; failure analysis in [[Evaluation]].
 - [ ] **Stage 8 — Desktop UI.** → [[Interfaces]]
 - [ ] **Stage 9 — Telegram bot.** → [[Interfaces]]
 - [ ] **Stage 10 — README + polish.** Screenshots, demo GIF, eval metrics.
@@ -41,4 +41,6 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   eyeballed. _(done)_
 - **Stage 6** — `orchestrator` (intent routing) + `summarizer`; `core.ask()`
   end-to-end across chitchat / sql_query / sql_with_chart / sql_with_excel. _(done)_
-- **Next: Stage 7** — eval (30 questions, execution + result accuracy).
+- **Stage 7** — 30-question eval harness; execution 97% (29/30), result 70%
+  (21/30, strict denotation match); honest failure analysis. _(done)_
+- **Next: Stage 8** — Desktop UI (Streamlit).
