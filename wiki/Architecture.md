@@ -36,15 +36,22 @@ class AssistantResponse:
                                    └─ Ollama (qwen2.5-coder:14b)
 ```
 
-## Data flow (per question)
+## Data flow (per question) — **implemented (stage 6)**
 
-1. **Orchestrator** classifies intent (structured JSON): `sql_query`,
-   `sql_with_chart`, `sql_with_excel`, `chitchat`.
-2. **Text-to-SQL** (if not chitchat): schema RAG + few-shot RAG → prompt →
-   Ollama → SQL → validate → execute (retry on error). See [[Text_to_SQL]].
-3. **Artifacts**: chart and/or Excel as requested. See [[Artifacts]].
-4. **Summarizer**: 2–4 sentence Russian analytical summary from the result.
-5. Return `AssistantResponse`.
+Entry point: `core.ask(question) -> AssistantResponse` (`src/core/orchestrator.py`,
+re-exported from `src/core/__init__.py`).
+
+1. **Orchestrator** classifies intent (structured JSON, temp 0.1): `sql_query`,
+   `sql_with_chart`, `sql_with_excel`, `chitchat` (`src/prompts/intent_router.txt`).
+2. **chitchat** → short capability reply (from the router, static fallback).
+3. **Text-to-SQL** (data intents): schema RAG + few-shot RAG → prompt → Ollama →
+   SQL → validate → execute (retry on error). See [[Text_to_SQL]].
+4. **Summarizer**: 2–4 sentence Russian analytical summary from the first 50
+   rows (`src/core/summarizer.py`, temp 0.3). See [[Interfaces]].
+5. **Artifacts**: `sql_with_chart` → PNG (best-effort); `sql_with_excel` → xlsx
+   (+ row-count warning past 100k). See [[Artifacts]].
+6. Return `AssistantResponse` (text, sql, table_preview[:50], chart_path, excel_path, error).
+   `ask()` never raises — failures surface in `error`/`text`.
 
 ## Stack choices (rationale)
 
@@ -57,4 +64,15 @@ class AssistantResponse:
 
 ## Open questions / decisions
 
-- _(none yet)_
+- **`ask()` is total** (never raises): validator/SQL failure → `SQL_FAILURE_TEXT`
+  + `error`; any exception → `ERROR_TEXT` + `error`. Interfaces can render blindly.
+- **Chart is best-effort**: if `decide_chart_spec` returns None or `build_chart`
+  throws, the text answer + preview still return (chart just omitted).
+- **Intent fallback**: if the router JSON won't parse, default to `sql_query`
+  (most useful safe behavior) rather than erroring.
+- **`core.ask` re-export** lives in `src/core/__init__.py` via a lazy import of
+  the orchestrator, to avoid a circular import (orchestrator needs
+  `AssistantResponse` from the package).
+- **Verified end-to-end (stage 6)** on all four intents: chitchat replies with
+  capabilities; `sql_query`/`_with_chart`/`_with_excel` return summary + SQL +
+  preview, with a PNG / xlsx attached as routed.

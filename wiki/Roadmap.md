@@ -17,7 +17,8 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   questions. → [[Text_to_SQL]]
 - [x] **Stage 5 — Chart builder + Excel exporter** (27 unit tests; charts
   eyeballed on real data). → [[Artifacts]]
-- [ ] **Stage 6 — Orchestrator + summarizer.** Full core, `core.ask()` end-to-end.
+- [x] **Stage 6 — Orchestrator + summarizer.** Full core, `core.ask()` verified
+  end-to-end on all four intents. → [[Architecture]]
 - [ ] **Stage 7 — Eval.** 30 questions, execution + result accuracy → `eval/results.md`.
   → [[Evaluation]]
 - [ ] **Stage 8 — Desktop UI.** → [[Interfaces]]
@@ -38,4 +39,6 @@ one commit per stage (`stage N: ...`); update the wiki after each.
 - **Stage 5** — `chart_builder` (LLM spec → matplotlib PNG, validated palette) +
   `excel_exporter` (openpyxl); 27 unit tests pass; real charts rendered &
   eyeballed. _(done)_
-- **Next: Stage 6** — orchestrator + summarizer; `core.ask()` end-to-end.
+- **Stage 6** — `orchestrator` (intent routing) + `summarizer`; `core.ask()`
+  end-to-end across chitchat / sql_query / sql_with_chart / sql_with_excel. _(done)_
+- **Next: Stage 7** — eval (30 questions, execution + result accuracy).

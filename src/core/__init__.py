@@ -20,3 +20,14 @@ class AssistantResponse:
     chart_path: Path | None = None
     excel_path: Path | None = None
     error: str | None = None
+
+
+def ask(question: str) -> "AssistantResponse":
+    """Public core entry point: ``core.ask(question) -> AssistantResponse``.
+
+    Lazy import keeps the orchestrator (which imports this module) free of a
+    circular dependency. See [[Architecture]].
+    """
+    from src.core.orchestrator import ask as _ask
+
+    return _ask(question)
