@@ -9,7 +9,7 @@ Existing collections `jewelry_items`, `terraforming` are unrelated — never tou
 mutating call (recreate/upsert). Build: `python -m src.vectorstore.indexer`.
 
 **Status: implemented (stage 3).** `retail_schema` = 6 points, `retail_few_shot`
-= 26 points, both dim 768 / cosine. `jewelry_items` (23,672) and `terraforming`
+= 28 points, both dim 768 / cosine. `jewelry_items` (23,672) and `terraforming`
 (6) verified untouched.
 
 ## `retail_schema`
@@ -18,10 +18,10 @@ mutating call (recreate/upsert). Build: `python -m src.vectorstore.indexer`.
 - Use: schema RAG — retrieve top-3 relevant tables for a question.
 
 ## `retail_few_shot`
-- One document per `question → reference SQL` pair (**26** written manually
+- One document per `question → reference SQL` pair (**28** written manually
   against the real `retail_demo` schema). Payload: `{question, sql, tags}`.
 - Coverage tags: `aggregation`, `join`/`directory`, `top_n`, `time_series`,
-  `window`, `plan_vs_actual`. All 26 SQL statements execute cleanly against
+  `window`, `plan_vs_actual`. All 28 SQL statements execute cleanly against
   `retail_demo` (validated before indexing — reference SQL must run).
 - Use: dynamic few-shot — retrieve top-3 nearest examples per question.
 

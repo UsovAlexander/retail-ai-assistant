@@ -348,6 +348,23 @@ FEW_SHOT: list[dict] = [
         ),
         "tags": ["join", "time_series"],
     },
+    {
+        # The dataset contains future-dated sales, so relative periods must be
+        # bounded on BOTH sides (see sql_system.txt).
+        "question": "Продажи и выручка по дням за последнюю неделю.",
+        "sql": (
+            "SELECT sale_date, count() AS sales, "
+            "round(sum(quantity * price * (1 - discount_pct / 100))) AS revenue "
+            "FROM sales WHERE sale_date BETWEEN today() - 7 AND today() "
+            "GROUP BY sale_date ORDER BY sale_date"
+        ),
+        "tags": ["time_series", "relative_dates"],
+    },
+    {
+        "question": "Сколько продаж было вчера?",
+        "sql": "SELECT count() AS sales FROM sales WHERE sale_date = yesterday()",
+        "tags": ["aggregation", "relative_dates"],
+    },
 ]
 
 

@@ -23,7 +23,13 @@ Data rules:
 - Answer exactly what is asked with the minimal columns needed. For a "сколько /
   how many" question, return a single scalar via count()/countIf() — do not return
   one row per item.
-- Sales history spans 2024-01-01 .. 2026-12-31.
+- Sales history spans 2024-01-01 .. 2026-12-31 — INCLUDING dates in the future
+  relative to today. Therefore, for relative time references ("вчера", "за
+  последнюю неделю", "за последний месяц", "в этом году") ALWAYS bound the date
+  range on BOTH sides, e.g.:
+  sale_date BETWEEN today() - 7 AND today()   -- last week
+  sale_date = yesterday()                     -- yesterday
+  Never use an open-ended `sale_date >= ...` filter for a relative period.
 
 ClickHouse dialect tips:
 - Dates: toYear(d), toMonth(d), toStartOfMonth(d), toDayOfWeek(d), toYYYYMM(d).

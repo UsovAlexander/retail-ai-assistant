@@ -45,6 +45,13 @@ nested-count few-shot example, or a post-check that wraps such shapes.
 
 ## Dialect / correctness rules to encode in the prompt (stage 4)
 
+- **Relative dates must be bounded on BOTH sides** (`sale_date BETWEEN today()-7
+  AND today()`), because the dataset intentionally contains **future-dated sales**
+  (through 2026-12-31, see [[Data]]). Found live via the Telegram bot: «продажи
+  по дням за последнюю неделю» generated an open `>= today()-7` filter and
+  returned 182 days (through Dec 2026) instead of 8. Fixed in `sql_system.txt`
+  + two `relative_dates` few-shot examples (28 total now).
+
 - Revenue is always `sum(quantity * price * (1 - discount_pct/100))`.
 - **Avoid join fan-out when aggregating the fact table against `plans`**: never
   `JOIN plans → sales` and then `sum(plan_revenue)` (it multiplies the plan by
