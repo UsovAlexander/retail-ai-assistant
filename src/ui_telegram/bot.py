@@ -41,7 +41,6 @@ _history: dict[int, deque[HistoryTurn]] = defaultdict(lambda: deque(maxlen=HISTO
 MAX_MESSAGE = 4096
 MAX_CAPTION = 1024
 TABLE_ROWS = 10
-CELL_WIDTH = 22
 
 WELCOME = (
     "💎 <b>Retail AI Assistant</b>\n\n"
@@ -75,28 +74,57 @@ def _truncate(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
-def _format_table(rows: list[dict], limit: int = TABLE_ROWS) -> str:
-    """Render the first rows as a compact monospace table for Telegram."""
+RANK_EMOJI = ["🥇", "🥈", "🥉"]
+PCT_HINTS = ("pct", "percent", "share", "процент", "доля")
+
+
+def _fmt_value(v: object, col: str) -> str:
+    """Human number formatting: space thousands, comma decimals, % for shares."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return str(v)
+    if isinstance(v, float) and not float(v).is_integer():
+        s = f"{v:,.1f}".replace(",", " ").replace(".", ",")
+    else:
+        s = f"{int(v):,}".replace(",", " ")
+    if any(h in col.lower() for h in PCT_HINTS):
+        s += "%"
+    return s
+
+
+def _format_rows(rows: list[dict], limit: int = TABLE_ROWS) -> str:
+    """Render rows as pretty text lines (no tables): emoji bullet + values."""
     if not rows:
         return ""
     cols = list(rows[0].keys())
-    shown = rows[:limit]
+    str_cols = [c for c in cols if isinstance(rows[0].get(c), str)]
+    label_col = str_cols[0] if str_cols else cols[0]
+    value_cols = [c for c in cols if c != label_col]
 
-    def cell(v: object) -> str:
-        s = f"{v:,.0f}" if isinstance(v, float) else str(v)
-        return _truncate(s, CELL_WIDTH)
+    # Medals only when the list reads as a ranking (first metric non-increasing).
+    ranked = False
+    if value_cols and len(rows) > 1:
+        nums = [r.get(value_cols[-1]) for r in rows[:limit]]
+        if all(isinstance(n, (int, float)) for n in nums):
+            ranked = all(nums[i] >= nums[i + 1] for i in range(len(nums) - 1))
 
-    widths = {
-        c: min(CELL_WIDTH, max(len(c), *(len(cell(r.get(c))) for r in shown)))
-        for c in cols
-    }
-    header = " | ".join(c.ljust(widths[c]) for c in cols)
-    sep = "-+-".join("-" * widths[c] for c in cols)
-    body = "\n".join(
-        " | ".join(cell(r.get(c)).ljust(widths[c]) for c in cols) for r in shown
-    )
-    more = f"\n… ещё {len(rows) - limit} строк" if len(rows) > limit else ""
-    return f"<pre>{html.escape(header)}\n{sep}\n{body}</pre>{html.escape(more)}"
+    lines: list[str] = []
+    for i, r in enumerate(rows[:limit]):
+        bullet = RANK_EMOJI[i] if ranked and i < len(RANK_EMOJI) else "▫️"
+        label = html.escape(_truncate(str(r.get(label_col)), 60))
+        if not value_cols:
+            lines.append(f"{bullet} {label}")
+            continue
+        parts = [
+            f"{html.escape(c)}: <b>{html.escape(_fmt_value(r.get(c), c))}</b>"
+            for c in value_cols
+        ]
+        if len(value_cols) == 1:
+            lines.append(f"{bullet} {label} — <b>{html.escape(_fmt_value(r.get(value_cols[0]), value_cols[0]))}</b>")
+        else:
+            lines.append(f"{bullet} <b>{label}</b>\n      {' · '.join(parts)}")
+    if len(rows) > limit:
+        lines.append(f"… ещё {len(rows) - limit} строк")
+    return "\n".join(lines)
 
 
 async def _send_response(message: Message, resp: AssistantResponse) -> None:
@@ -107,9 +135,9 @@ async def _send_response(message: Message, resp: AssistantResponse) -> None:
     if resp.resolved_question:
         text = f"<i>🔎 Понял как: {html.escape(resp.resolved_question)}</i>\n\n{text}"
 
-    # Compact table when there's data but no chart to carry it.
+    # Pretty text lines when there's data but no chart to carry it.
     if resp.table_preview and len(resp.table_preview) > 1 and resp.chart_path is None:
-        text += "\n\n" + _format_table(resp.table_preview)
+        text += "\n\n" + _format_rows(resp.table_preview)
     if resp.excel_path is not None:
         text += f"\n\n{html.escape(EXCEL_HINT)}"
 
