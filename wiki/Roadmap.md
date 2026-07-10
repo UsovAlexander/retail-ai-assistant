@@ -25,7 +25,9 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   the browser on both backends. → [[Interfaces]]
 - [x] **Stage 9 — Telegram bot.** aiogram 3.x, whitelist, chart-as-photo,
   Excel-hint; verified connecting + polling. → [[Interfaces]]
-- [ ] **Stage 10 — README + polish.** Screenshots, demo GIF, eval metrics.
+- [x] **Stage 10 — README + polish.** Portfolio README (pitch, chart images,
+  metrics table local vs Groq, quick start, stack rationale, repo map);
+  final checks green. _UI screenshots/GIF — manual step for the author._
 
 ## Status log
 
@@ -49,4 +51,12 @@ one commit per stage (`stage N: ...`); update the wiki after each.
 - **Stage 8** — Streamlit desktop chat with sidebar LLM-backend toggle
   (local/external/auto); verified in the browser: chart flow on local, Excel
   flow on Groq, history preserved. _(done)_
-- **Next: Stage 9** — Telegram bot (aiogram 3.x).
+- **Stage 9** — Telegram bot `@retail_ai_assist_bot` (aiogram 3.x): whitelist,
+  chart-as-photo, monospace tables, Excel hint; verified connecting + polling.
+  _(done; live chat exchange awaits a real Telegram message)_
+- **Stage 10** — portfolio README (chart artifacts as visuals, local-vs-Groq
+  metrics, quick start, stack rationale); 27 tests + check_env green;
+  `.gitignore` adjusted so `docs/images/` is tracked. Remaining manual polish:
+  desktop + telegram UI screenshots / demo GIF by the author. _(done)_
+
+**All 10 stages complete.**

@@ -12,10 +12,9 @@ __pycache__/
 venv/
 .pytest_cache/
 
-# Artifacts produced by the core (charts, exports)
+# Artifacts produced by the core (charts, exports).
+# docs/images/ is intentionally NOT ignored — README assets live there.
 artifacts/
-*.png
-*.xlsx
 
 # OS / editor
 .DS_Store
