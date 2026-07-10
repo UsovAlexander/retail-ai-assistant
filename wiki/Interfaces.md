@@ -25,13 +25,22 @@ Both interfaces are thin wrappers around `core.ask(question) -> AssistantRespons
   summary + PNG + table + SQL; toggled to Groq → Excel question → summary +
   table + download button + SQL; history preserved across the toggle.
 
-## Telegram bot (`src/ui_telegram/bot.py`)
-- aiogram 3.x; token via `TELEGRAM_BOT_TOKEN` (.env).
-- Chart → photo. **Excel not supported** in the bot: on `sql_with_excel`,
-  reply with data as text/chart and hint that export is in the desktop version.
-- User whitelist by telegram `user_id` (config) — internal corporate tool.
-- Commands: `/start` (capabilities + example questions), `/help`.
+## Telegram bot (`src/ui_telegram/bot.py`) — implemented
+- aiogram 3.x; token via `TELEGRAM_BOT_TOKEN` (.env). Bot: `@retail_ai_assist_bot`.
+- Chart → photo (`FSInputFile` from the core's PNG artifact); summary as the
+  caption when ≤1024 chars, otherwise a separate message.
+- **Excel not supported** in the bot: on `sql_with_excel` the core still writes
+  the file; the bot ignores `excel_path`, shows the data as a compact monospace
+  `<pre>` table (first 10 rows) and hints that export lives in the desktop app.
+- Multi-row results without a chart also get the monospace table.
+- User whitelist by telegram `user_id` (`TELEGRAM_ALLOWED_USERS`); denied users
+  see their own ID so an admin can whitelist them. **Empty whitelist = deny all.**
+- Commands: `/start`, `/help` (capabilities + example questions).
+- The sync core runs via `asyncio.to_thread` so polling stays responsive;
+  `typing` chat action while thinking. HTML parse mode, everything escaped.
 - Run: `python -m src.ui_telegram.bot`.
+- **Verified (stage 9)**: bot connects, `getMe` OK, polling starts, whitelist
+  logged. Live chat exchange requires messaging the bot from Telegram.
 
 ## Open questions / decisions
 
@@ -42,4 +51,10 @@ Both interfaces are thin wrappers around `core.ask(question) -> AssistantRespons
   two consecutive questions can hit different models for comparison.
 - **`sys.path` bootstrap** at the top of `app.py` because
   `streamlit run src/ui_desktop/app.py` doesn't put the repo root on the path.
-- _(stage 9 decisions pending)_
+- **Bot ignores `excel_path` rather than the core skipping generation** — keeping
+  the core interface-agnostic beats saving one small file write. If it ever
+  matters, add an `allow_excel` flag to `ask()`.
+- **Empty whitelist denies everyone** (safe default for a corporate tool); the
+  denial message shows the requester's ID to ease onboarding.
+- **No LLM-backend toggle in the bot** — it follows `LLM_BACKEND` from config;
+  per-request comparison is a desktop feature.

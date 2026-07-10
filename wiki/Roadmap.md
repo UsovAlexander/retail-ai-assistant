@@ -23,7 +23,8 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   match) → `eval/results.md`; failure analysis in [[Evaluation]].
 - [x] **Stage 8 — Desktop UI.** Streamlit chat + LLM-backend toggle; verified in
   the browser on both backends. → [[Interfaces]]
-- [ ] **Stage 9 — Telegram bot.** → [[Interfaces]]
+- [x] **Stage 9 — Telegram bot.** aiogram 3.x, whitelist, chart-as-photo,
+  Excel-hint; verified connecting + polling. → [[Interfaces]]
 - [ ] **Stage 10 — README + polish.** Screenshots, demo GIF, eval metrics.
 
 ## Status log
