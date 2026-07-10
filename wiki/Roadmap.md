@@ -21,7 +21,8 @@ one commit per stage (`stage N: ...`); update the wiki after each.
   end-to-end on all four intents. → [[Architecture]]
 - [x] **Stage 7 — Eval.** 30 questions; execution 97% / result 70% (denotation
   match) → `eval/results.md`; failure analysis in [[Evaluation]].
-- [ ] **Stage 8 — Desktop UI.** → [[Interfaces]]
+- [x] **Stage 8 — Desktop UI.** Streamlit chat + LLM-backend toggle; verified in
+  the browser on both backends. → [[Interfaces]]
 - [ ] **Stage 9 — Telegram bot.** → [[Interfaces]]
 - [ ] **Stage 10 — README + polish.** Screenshots, demo GIF, eval metrics.
 
@@ -42,5 +43,9 @@ one commit per stage (`stage N: ...`); update the wiki after each.
 - **Stage 6** — `orchestrator` (intent routing) + `summarizer`; `core.ask()`
   end-to-end across chitchat / sql_query / sql_with_chart / sql_with_excel. _(done)_
 - **Stage 7** — 30-question eval harness; execution 97% (29/30), result 70%
-  (21/30, strict denotation match); honest failure analysis. _(done)_
-- **Next: Stage 8** — Desktop UI (Streamlit).
+  (21/30, strict denotation match); honest failure analysis. _(done; +Groq
+  comparison run: 100%/77%, see [[Evaluation]])_
+- **Stage 8** — Streamlit desktop chat with sidebar LLM-backend toggle
+  (local/external/auto); verified in the browser: chart flow on local, Excel
+  flow on Groq, history preserved. _(done)_
+- **Next: Stage 9** — Telegram bot (aiogram 3.x).
