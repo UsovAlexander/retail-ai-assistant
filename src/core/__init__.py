@@ -20,14 +20,23 @@ class AssistantResponse:
     chart_path: Path | None = None
     excel_path: Path | None = None
     error: str | None = None
+    # When a follow-up was rewritten into a self-contained question, the
+    # rewritten form (for transparency in the UIs and for interface history).
+    resolved_question: str | None = None
 
 
-def ask(question: str) -> "AssistantResponse":
+# One dialogue turn as the interfaces remember it: (question, generated SQL).
+HistoryTurn = tuple[str, str | None]
+
+
+def ask(question: str, history: "list[HistoryTurn] | None" = None) -> "AssistantResponse":
     """Public core entry point: ``core.ask(question) -> AssistantResponse``.
 
-    Lazy import keeps the orchestrator (which imports this module) free of a
-    circular dependency. See [[Architecture]].
+    ``history`` — recent turns ``(question, sql)`` from the calling interface;
+    used to rewrite follow-ups («добавь …», «а по месяцам») into self-contained
+    questions. Lazy import keeps the orchestrator (which imports this module)
+    free of a circular dependency. See [[Architecture]].
     """
     from src.core.orchestrator import ask as _ask
 
-    return _ask(question)
+    return _ask(question, history)

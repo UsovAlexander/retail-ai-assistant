@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import html
 import logging
+from collections import defaultdict, deque
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -27,11 +28,15 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import FSInputFile, Message
 
 from src.config import configure_logging, get_settings
-from src.core import AssistantResponse, ask
+from src.core import AssistantResponse, HistoryTurn, ask
 
 logger = logging.getLogger("tg_bot")
 
 router = Router()
+
+# Recent (question, sql) turns per chat — lets follow-ups («добавь …») work.
+HISTORY_TURNS = 3
+_history: dict[int, deque[HistoryTurn]] = defaultdict(lambda: deque(maxlen=HISTORY_TURNS))
 
 MAX_MESSAGE = 4096
 MAX_CAPTION = 1024
@@ -98,6 +103,10 @@ async def _send_response(message: Message, resp: AssistantResponse) -> None:
     """Deliver an AssistantResponse: text, optional table, chart as photo."""
     text = html.escape(resp.text or "")
 
+    # Transparency: show how a follow-up was understood.
+    if resp.resolved_question:
+        text = f"<i>🔎 Понял как: {html.escape(resp.resolved_question)}</i>\n\n{text}"
+
     # Compact table when there's data but no chart to carry it.
     if resp.table_preview and len(resp.table_preview) > 1 and resp.chart_path is None:
         text += "\n\n" + _format_table(resp.table_preview)
@@ -136,8 +145,15 @@ async def handle_question(message: Message) -> None:
 
     await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
     # The core is synchronous — run it off the event loop.
-    resp = await asyncio.to_thread(ask, message.text)
+    history = list(_history[message.chat.id])
+    resp = await asyncio.to_thread(ask, message.text, history)
     await _send_response(message, resp)
+
+    # Remember the turn (the self-contained form, so later follow-ups chain).
+    if resp.error is None and resp.sql:
+        _history[message.chat.id].append(
+            (resp.resolved_question or message.text, resp.sql)
+        )
 
 
 async def main_async() -> None:

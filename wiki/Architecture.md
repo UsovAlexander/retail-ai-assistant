@@ -38,9 +38,17 @@ class AssistantResponse:
 
 ## Data flow (per question) — **implemented (stage 6)**
 
-Entry point: `core.ask(question) -> AssistantResponse` (`src/core/orchestrator.py`,
-re-exported from `src/core/__init__.py`).
+Entry point: `core.ask(question, history=None) -> AssistantResponse`
+(`src/core/orchestrator.py`, re-exported from `src/core/__init__.py`).
+`history` = recent `(question, sql)` turns supplied by the interface.
 
+0. **Condense** (only when history is passed): follow-ups («добавь выполнение
+   плана в %», «а по месяцам») are rewritten by one LLM call
+   (`src/prompts/condense.txt`) into a self-contained question; standalone
+   questions pass through unchanged. The rewritten form goes into
+   `AssistantResponse.resolved_question` (UIs show «🔎 Понял как: …») and the
+   rest of the pipeline — including RAG retrieval — runs on it. Best-effort:
+   any condense failure falls back to the raw question.
 1. **Orchestrator** classifies intent (structured JSON, temp 0.1): `sql_query`,
    `sql_with_chart`, `sql_with_excel`, `chitchat` (`src/prompts/intent_router.txt`).
 2. **chitchat** → short capability reply (from the router, static fallback).
@@ -97,3 +105,10 @@ what actually ran; the eval report and (stage 8) the desktop UI surface it.
 - **Verified end-to-end (stage 6)** on all four intents: chitchat replies with
   capabilities; `sql_query`/`_with_chart`/`_with_excel` return summary + SQL +
   preview, with a PNG / xlsx attached as routed.
+- **Multi-turn follow-ups (post-stage-10 fix)**: the core stays stateless; the
+  *interfaces* own the memory (bot: per-chat deque of 3 turns; Streamlit: from
+  `session_state`) and pass it into `ask()`. Found live: «Добавь выполнение
+  плана в %» after a plan-vs-actual question was answered without context →
+  600-row noise. With condensing it resolves to the merged question and returns
+  the correct 10-row plan-% result. History stores the *resolved* question so
+  chained follow-ups keep working.

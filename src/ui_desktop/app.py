@@ -21,7 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.config import configure_logging, get_settings  # noqa: E402
-from src.core import AssistantResponse, ask  # noqa: E402
+from src.core import AssistantResponse, HistoryTurn, ask  # noqa: E402
 from src.core.llm_client import active_model_label, use_backend  # noqa: E402
 
 configure_logging()
@@ -44,8 +44,22 @@ EXAMPLES = [
 ]
 
 
+def build_history(messages: list[dict]) -> list[HistoryTurn]:
+    """Recent (question, sql) turns from the chat history, for follow-ups."""
+    turns: list[HistoryTurn] = []
+    for i in range(len(messages) - 1):
+        cur, nxt = messages[i], messages[i + 1]
+        if cur["role"] == "user" and nxt["role"] == "assistant":
+            resp: AssistantResponse = nxt["response"]
+            if resp.error is None and resp.sql:
+                turns.append((resp.resolved_question or cur["content"], resp.sql))
+    return turns[-3:]
+
+
 def render_response(resp: AssistantResponse, idx: int) -> None:
     """Render one assistant answer: text, chart, table, Excel, SQL."""
+    if resp.resolved_question:
+        st.caption(f"🔎 Понял как: {resp.resolved_question}")
     if resp.text:
         st.markdown(resp.text)
     if resp.chart_path is not None and Path(resp.chart_path).exists():
@@ -114,6 +128,6 @@ if prompt := st.chat_input("Спросите про выручку, магази
     with st.chat_message("assistant"):
         with st.spinner(f"Анализирую ({active_model_label(backend)})…"):
             with use_backend(backend):
-                response = ask(prompt)
+                response = ask(prompt, build_history(st.session_state.messages[:-1]))
         render_response(response, len(st.session_state.messages))
     st.session_state.messages.append({"role": "assistant", "response": response})

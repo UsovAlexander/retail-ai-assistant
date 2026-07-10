@@ -13,7 +13,7 @@ from typing import Literal
 from pydantic import BaseModel, ValidationError
 
 from src.config import PROMPTS_DIR
-from src.core import AssistantResponse
+from src.core import AssistantResponse, HistoryTurn
 from src.core.chart_builder import build_chart, decide_chart_spec
 from src.core.excel_exporter import ROW_WARN_THRESHOLD, export_to_excel
 from src.core.llm_client import chat
@@ -43,6 +43,37 @@ class IntentResult(BaseModel):
     reply: str = ""
 
 
+MAX_HISTORY_TURNS = 3
+
+
+def condense(question: str, history: list[HistoryTurn]) -> str:
+    """Rewrite a follow-up into a self-contained question using recent turns.
+
+    Returns the question unchanged when the model deems it standalone (or on
+    any failure — condensing must never break the main flow).
+    """
+    system = (PROMPTS_DIR / "condense.txt").read_text(encoding="utf-8")
+    turns = history[-MAX_HISTORY_TURNS:]
+    lines = []
+    for i, (q, sql) in enumerate(turns, 1):
+        lines.append(f"Вопрос {i}: {q}")
+        if sql:
+            lines.append(f"SQL {i}: {sql}")
+    user = (
+        "ПРЕДЫДУЩИЙ ДИАЛОГ:\n" + "\n".join(lines) +
+        f"\n\nНОВОЕ СООБЩЕНИЕ: {question}\n\nСамодостаточный вопрос:"
+    )
+    try:
+        rewritten = chat(
+            [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.1,
+        ).strip()
+    except Exception as exc:  # noqa: BLE001 - best-effort step
+        logger.warning("condense failed (%s) — using the raw question", exc)
+        return question
+    return rewritten or question
+
+
 def classify(question: str) -> IntentResult:
     """Classify the question into one intent (structured JSON, temp 0.1)."""
     system = (PROMPTS_DIR / "intent_router.txt").read_text(encoding="utf-8")
@@ -60,31 +91,46 @@ def classify(question: str) -> IntentResult:
         return IntentResult(intent="sql_query")
 
 
-def ask(question: str) -> AssistantResponse:
-    """Answer a natural-language question. Never raises — errors go in the response."""
+def ask(question: str, history: list[HistoryTurn] | None = None) -> AssistantResponse:
+    """Answer a natural-language question. Never raises — errors go in the response.
+
+    ``history`` (recent ``(question, sql)`` turns from the interface) lets
+    follow-ups like «добавь выполнение плана в %» be rewritten into
+    self-contained questions before the stateless pipeline runs.
+    """
     logger.info("ask(): %s", question)
     try:
-        intent = classify(question)
+        resolved = question
+        if history:
+            resolved = condense(question, history)
+            if resolved.strip().lower() != question.strip().lower():
+                logger.info("condensed follow-up -> %s", resolved)
+
+        intent = classify(resolved)
         logger.info("intent = %s", intent.intent)
+
+        resolved_out = resolved if resolved.strip().lower() != question.strip().lower() else None
 
         if intent.intent == "chitchat":
             return AssistantResponse(text=intent.reply or FALLBACK_CHITCHAT)
 
-        sql_result = generate_sql(question)
+        sql_result = generate_sql(resolved)
         if not sql_result.ok:
             return AssistantResponse(
-                text=SQL_FAILURE_TEXT, sql=sql_result.sql, error=sql_result.error
+                text=SQL_FAILURE_TEXT, sql=sql_result.sql, error=sql_result.error,
+                resolved_question=resolved_out,
             )
 
-        summary = summarize(question, sql_result.sql, sql_result.columns, sql_result.rows)
+        summary = summarize(resolved, sql_result.sql, sql_result.columns, sql_result.rows)
         response = AssistantResponse(
             text=summary,
             sql=sql_result.sql,
             table_preview=sql_result.rows[:PREVIEW_ROWS],
+            resolved_question=resolved_out,
         )
 
         if intent.intent == "sql_with_chart":
-            spec = decide_chart_spec(question, sql_result.columns, sql_result.rows)
+            spec = decide_chart_spec(resolved, sql_result.columns, sql_result.rows)
             if spec is not None:
                 try:
                     response.chart_path = build_chart(sql_result.rows, spec)
