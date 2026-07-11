@@ -21,7 +21,6 @@ import datetime as dt
 import html
 import logging
 import uuid
-from collections import defaultdict, deque
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -30,19 +29,15 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import FSInputFile, KeyboardButton, Message, ReplyKeyboardMarkup
 
 from src.config import configure_logging, get_settings
-from src.core import AssistantResponse, HistoryTurn, ask, chat_store
+from src.core import AssistantResponse, ask, chat_store
 
 logger = logging.getLogger("tg_bot")
 
 router = Router()
 
-# Recent (question, sql) turns per chat — lets follow-ups («добавь …») work.
-# The «Новый запрос» button (or /new) clears it: explicit dialogue boundary.
-HISTORY_TURNS = 3
-_history: dict[int, deque[HistoryTurn]] = defaultdict(lambda: deque(maxlen=HISTORY_TURNS))
-
-# Session id per Telegram chat: a new one on /new, so each dialogue shows up
-# as a separate chat in the desktop UI's history (chat_store).
+# Session id per Telegram chat: a new one on /new — the explicit dialogue
+# boundary. Follow-up context comes from chat_store (the shared ClickHouse
+# history), so a session continued from the desktop UI stays coherent here too.
 _session: dict[int, str] = {}
 
 
@@ -206,7 +201,6 @@ async def cmd_new(message: Message) -> None:
         user_id = message.from_user.id if message.from_user else 0
         await message.answer(DENIED.format(user_id=user_id))
         return
-    _history[message.chat.id].clear()
     _session.pop(message.chat.id, None)  # next question starts a new stored chat
     await message.answer(
         "🧹 Контекст сброшен — следующий вопрос будет обработан с чистого листа.",
@@ -224,20 +218,15 @@ async def handle_question(message: Message) -> None:
     logger.info("Question from %s: %s", message.from_user.id, message.text)  # type: ignore[union-attr]
 
     await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
-    # The core is synchronous — run it off the event loop.
-    history = list(_history[message.chat.id])
+    session = _session_id(message.chat.id)
+    # The core is synchronous — run it off the event loop. Follow-up context
+    # comes from the shared store, so desktop-added turns count here too.
+    history = await asyncio.to_thread(chat_store.build_history, "telegram", session)
     resp = await asyncio.to_thread(ask, message.text, history)
     await _send_response(message, resp)
 
-    # Remember the turn (the self-contained form, so later follow-ups chain).
-    if resp.error is None and resp.sql:
-        _history[message.chat.id].append(
-            (resp.resolved_question or message.text, resp.sql)
-        )
-    # Shared conversation log (rendered by the desktop UI). Best-effort.
-    await asyncio.to_thread(
-        chat_store.log_turn, "telegram", _session_id(message.chat.id), message.text, resp
-    )
+    # Shared conversation log (also rendered by the desktop UI). Best-effort.
+    await asyncio.to_thread(chat_store.log_turn, "telegram", session, message.text, resp)
 
 
 async def main_async() -> None:

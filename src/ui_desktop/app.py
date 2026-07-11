@@ -169,16 +169,19 @@ for i, turn in enumerate(turns):
         render_response(chat_store.turn_to_response(turn), i)
 
 if source == "telegram":
-    st.info("📱 Это переписка из Telegram — просмотр. Продолжить можно в боте, "
-            "или начните новый чат здесь.")
-else:
-    if prompt := st.chat_input("Спросите про выручку, магазины, план, сотрудников…"):
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        with st.chat_message("assistant"):
-            with st.spinner(f"Анализирую ({active_model_label(backend)})…"):
-                with use_backend(backend):
-                    response = ask(prompt, chat_store.build_history(source, chat_id))
-            render_response(response, len(turns))
-        chat_store.log_turn(source, chat_id, prompt, response)
-        st.rerun()
+    st.caption(
+        "📱 Этот чат начат в Telegram — можно продолжать прямо здесь. "
+        "Ответы, отправленные отсюда, в Telegram не приходят, но сохраняются "
+        "в общей истории чата."
+    )
+
+if prompt := st.chat_input("Спросите про выручку, магазины, план, сотрудников…"):
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    with st.chat_message("assistant"):
+        with st.spinner(f"Анализирую ({active_model_label(backend)})…"):
+            with use_backend(backend):
+                response = ask(prompt, chat_store.build_history(source, chat_id))
+        render_response(response, len(turns))
+    chat_store.log_turn(source, chat_id, prompt, response)
+    st.rerun()
