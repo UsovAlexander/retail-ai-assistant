@@ -85,10 +85,9 @@ context override (for a per-request UI toggle) > `LLM_BACKEND` config. Both
 backends use the OpenAI SDK — no extra dependency. `active_model_label()` reports
 what actually ran; the eval report and (stage 8) the desktop UI surface it.
 
-> **Deliberate deviation from spec §12** ("local Ollama only"): added on request
-> to (a) compare metrics against a stronger external model and (b) auto-fail-over
-> in prod. Mitigated: **off by default** — the "fully local" default is preserved;
-> external needs an explicit key in `.env`.
+> Spec §12 originally said "local Ollama only"; **amended by the owner** to
+> allow the opt-in external backend (model benchmarking + prod failover).
+> The local default is preserved; external needs an explicit key in `.env`.
 
 ## Stack choices (rationale)
 

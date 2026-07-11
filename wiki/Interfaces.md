@@ -29,10 +29,12 @@ Both interfaces are thin wrappers around `core.ask(question) -> AssistantRespons
 - aiogram 3.x; token via `TELEGRAM_BOT_TOKEN` (.env). Bot: `@retail_ai_assist_bot`.
 - Chart → photo (`FSInputFile` from the core's PNG artifact); summary as the
   caption when ≤1024 chars, otherwise a separate message.
-- **Excel not supported** in the bot: on `sql_with_excel` the core still writes
-  the file; the bot ignores `excel_path`, shows the data as a compact monospace
-  `<pre>` table (first 10 rows) and hints that export lives in the desktop app.
-- Multi-row results without a chart also get the monospace table.
+- **Excel → document** (`answer_document`, filename `report_<date>.xlsx`,
+  summary as caption; `UPLOAD_DOCUMENT` chat action while sending).
+  _Spec §6.2 originally said desktop-only; amended 2026-07-11 on the owner's
+  request — the spec now matches this behavior._
+- Multi-row results without a chart/file get pretty emoji text lines
+  (`_format_rows`: 🥇🥈🥉 for rankings, ru number formatting, bold values).
 - User whitelist by telegram `user_id` (`TELEGRAM_ALLOWED_USERS`); denied users
   see their own ID so an admin can whitelist them. **Empty whitelist = deny all.**
 - Commands: `/start`, `/help` (capabilities + example questions).

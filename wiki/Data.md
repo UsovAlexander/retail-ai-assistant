@@ -104,9 +104,9 @@ Revenue formula used everywhere: `sum(quantity * price * (1 - discount_pct/100))
   `src/db.py` is not in the spec §7 tree — added deliberately so `check_env`
   and the generator share one connection factory.
 - **History window**: full calendar years **2024–2026** (`DATE_START`/`DATE_END`).
-  Extends past today (2026-07-07), so it contains future-dated sales — a
-  deliberate deviation from the spec's "2 years". Full years keep year-over-year
-  and seasonality clean in the demo.
+  Extends past today so the demo needs no daily refills; future rows are hidden
+  by the row policy (see above). The spec (originally "2 years") was amended by
+  the owner to match. Full years keep year-over-year and seasonality clean.
 - **Target rows**: `TARGET_SALES = 995_000` (stochastic rounding lands at
   995,056) — deliberately under the 1M cap (spec §12) while still "~1M".
 - **Sales realism model**: per-(store, day) expected count =

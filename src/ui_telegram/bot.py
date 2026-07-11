@@ -17,6 +17,7 @@ See [[Interfaces]].
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import html
 import logging
 from collections import defaultdict, deque
@@ -45,23 +46,19 @@ TABLE_ROWS = 10
 WELCOME = (
     "💎 <b>Retail AI Assistant</b>\n\n"
     "Я аналитический ассистент по продажам ювелирной сети: выручка, магазины, "
-    "план vs факт, сотрудники, товары. Могу присылать графики.\n\n"
+    "план vs факт, сотрудники, товары. Могу присылать графики и отчёты в Excel.\n\n"
     "Примеры вопросов:\n"
     "• Выручка по городам за 2025 год\n"
     "• Покажи график выручки по месяцам\n"
     "• Топ-5 магазинов по выручке\n"
-    "• Какие магазины не выполнили план в декабре 2025?\n\n"
-    "📎 Выгрузка в Excel доступна в десктопной версии."
+    "• Какие магазины не выполнили план в прошлом месяце?\n"
+    "• Выгрузи продажи по категориям в Excel"
 )
 HELP_TEXT = WELCOME
 DENIED = (
     "⛔ Доступ ограничен: это внутренний корпоративный инструмент.\n"
     "Ваш Telegram ID: <code>{user_id}</code> — передайте его администратору, "
     "чтобы вас добавили в список доступа."
-)
-EXCEL_HINT = (
-    "📎 Выгрузка в Excel доступна в десктопной версии ассистента "
-    "(Streamlit) — здесь показываю данные текстом."
 )
 
 
@@ -128,18 +125,21 @@ def _format_rows(rows: list[dict], limit: int = TABLE_ROWS) -> str:
 
 
 async def _send_response(message: Message, resp: AssistantResponse) -> None:
-    """Deliver an AssistantResponse: text, optional table, chart as photo."""
+    """Deliver an AssistantResponse: text, chart as photo, Excel as document."""
     text = html.escape(resp.text or "")
 
     # Transparency: show how a follow-up was understood.
     if resp.resolved_question:
         text = f"<i>🔎 Понял как: {html.escape(resp.resolved_question)}</i>\n\n{text}"
 
-    # Pretty text lines when there's data but no chart to carry it.
-    if resp.table_preview and len(resp.table_preview) > 1 and resp.chart_path is None:
+    has_excel = resp.excel_path is not None and resp.excel_path.exists()
+
+    # Pretty text lines when there's data and no chart/file to carry it.
+    if (
+        resp.table_preview and len(resp.table_preview) > 1
+        and resp.chart_path is None and not has_excel
+    ):
         text += "\n\n" + _format_rows(resp.table_preview)
-    if resp.excel_path is not None:
-        text += f"\n\n{html.escape(EXCEL_HINT)}"
 
     if resp.chart_path is not None and resp.chart_path.exists():
         photo = FSInputFile(resp.chart_path)
@@ -148,6 +148,18 @@ async def _send_response(message: Message, resp: AssistantResponse) -> None:
         else:
             await message.answer(_truncate(text, MAX_MESSAGE))
             await message.answer_photo(photo)
+    elif has_excel:
+        assert resp.excel_path is not None
+        document = FSInputFile(
+            resp.excel_path, filename=f"report_{dt.date.today().isoformat()}.xlsx"
+        )
+        if message.bot is not None:
+            await message.bot.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
+        if len(text) <= MAX_CAPTION:
+            await message.answer_document(document, caption=text)
+        else:
+            await message.answer(_truncate(text, MAX_MESSAGE))
+            await message.answer_document(document, caption="📊 Отчёт в Excel")
     else:
         await message.answer(_truncate(text or "Готово.", MAX_MESSAGE))
 
