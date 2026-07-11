@@ -7,7 +7,9 @@ interface-agnostic and returns an :class:`AssistantResponse`. See [[Architecture
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ValidationError
@@ -45,12 +47,23 @@ class IntentResult(BaseModel):
 
 MAX_HISTORY_TURNS = 3
 
+# Lexical signs that a message references the dialog (a fragment, not a full
+# question): «добавь …», «эту таблицу», «а по месяцам», «ещё», «убери» …
+_FRAGMENT_MARKERS = re.compile(
+    r"\b(добавь|добавить|убери|убрать|ещё|еще|эт(?:у|ой|ом|о|и|их)|"
+    r"такж[ае]|тоже|вместо|оставь|их|него|неё|нее)\b"
+    r"|^\s*(?:а|и)\s",
+    re.IGNORECASE,
+)
+
 
 def condense(question: str, history: list[HistoryTurn]) -> str:
-    """Rewrite a follow-up into a self-contained question using recent turns.
+    """Resolve a follow-up into a self-contained question using recent turns.
 
-    Returns the question unchanged when the model deems it standalone (or on
-    any failure — condensing must never break the main flow).
+    The model classifies the message explicitly (followup true/false, JSON).
+    A length guard applies ONLY to messages without fragment markers — a real
+    «добавь …» merge legitimately grows several-fold (live lesson: a plain
+    word-count guard rolled back honest merges and broke follow-ups).
     """
     system = (PROMPTS_DIR / "condense.txt").read_text(encoding="utf-8")
     turns = history[-MAX_HISTORY_TURNS:]
@@ -61,27 +74,34 @@ def condense(question: str, history: list[HistoryTurn]) -> str:
             lines.append(f"SQL {i}: {sql}")
     user = (
         "ПРЕДЫДУЩИЙ ДИАЛОГ:\n" + "\n".join(lines) +
-        f"\n\nНОВОЕ СООБЩЕНИЕ: {question}\n\nСамодостаточный вопрос:"
+        f"\n\nНОВОЕ СООБЩЕНИЕ: {question}\n\nJSON:"
     )
     try:
-        rewritten = chat(
+        raw = chat(
             [{"role": "system", "content": system}, {"role": "user", "content": user}],
             temperature=0.1,
-        ).strip()
+            json_mode=True,
+        )
+        data = json.loads(raw)
+        followup = bool(data.get("followup"))
+        rewritten = str(data.get("question") or "").strip()
     except Exception as exc:  # noqa: BLE001 - best-effort step
         logger.warning("condense failed (%s) — using the raw question", exc)
         return question
-    if not rewritten:
+
+    if not followup or not rewritten:
         return question
-    # Guard against over-merging: a message that already reads as a full
-    # question (>= 5 words) must not balloon in the rewrite (seen live: a
-    # standalone question got the previous SQL formula merged into it).
-    n_orig, n_new = len(question.split()), len(rewritten.split())
-    if n_orig >= 5 and n_new > 2 * n_orig:
-        logger.warning(
-            "condense over-merged (%d -> %d words) — using the raw question", n_orig, n_new
-        )
-        return question
+
+    # The model says follow-up. If the message has no fragment markers and
+    # already reads as a full question, distrust a ballooning rewrite.
+    if not _FRAGMENT_MARKERS.search(question):
+        n_orig, n_new = len(question.split()), len(rewritten.split())
+        if n_orig >= 5 and n_new > 2 * n_orig:
+            logger.warning(
+                "condense over-merged a marker-less question (%d -> %d words) — using the raw one",
+                n_orig, n_new,
+            )
+            return question
     return rewritten
 
 

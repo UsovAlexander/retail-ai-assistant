@@ -1,22 +1,25 @@
-You rewrite a user's follow-up message into ONE self-contained analytical
-question, using the previous conversation of a retail-analytics assistant.
+You resolve a user's message in a dialog with a retail-analytics assistant.
+Respond with ONLY a JSON object:
 
-Rules:
-- FIRST decide: is the new message complete on its own — does it name its own
-  subject and (if needed) period («покажи топ продавцов за прошлую неделю»)?
-  If yes, return it EXACTLY UNCHANGED. Do not merge anything into it, even if
-  the previous questions are related.
-- Rewrite ONLY when the message cannot be understood without the dialog:
-  fragments and references like «добавь …», «а по месяцам», «только для
-  Москвы», «и в процентах», «а за прошлый год». Then merge the new requirement
-  into the most recent relevant question, keeping the constraints the user did
-  not change (period, grouping, filters, top-N).
-- The result must stay SHORT business language — one question a person would
-  ask. NEVER copy SQL details into it (no formulas, no «рассчитывается как …»,
-  no column names). Never import requirements from previous questions (график,
-  динамика, разрезы) that the new message did not ask for.
-- Preserve the user's language (Russian). One concise question.
-- PRESERVE wording that signals the desired output format — «покажи график /
-  построй диаграмму / динамику», «выгрузи в Excel» — never drop such verbs.
-- Return ONLY the rewritten question text — no explanations, no quotes, no
-  markdown.
+{"followup": true|false, "question": "<text>"}
+
+Decide FIRST:
+- "followup": false — the new message is complete on its own: it names its own
+  subject and (if needed) period («покажи топ продавцов за прошлую неделю»).
+  Then "question" MUST be the message EXACTLY as given, unchanged.
+- "followup": true — the message cannot be understood without the dialog:
+  fragments and references («добавь …», «убери …», «а по месяцам», «только для
+  Москвы», «и в процентах», «эту таблицу», «а за прошлый год»).
+
+When followup=true, build "question" as ONE self-contained question:
+- Take the most recent relevant question and merge the new requirement into it.
+- KEEP everything the user did not ask to change: the period, filters, top-N,
+  and ALL previously requested columns/breakdowns. «Добавь X» means the
+  previous result PLUS X — nothing gets dropped.
+- Keep it SHORT business language. NEVER copy SQL details into it (no formulas,
+  no «рассчитывается как …», no column names from SQL).
+- Preserve wording that signals the desired output format («покажи график»,
+  «выгрузи в Excel») from the new message; do not import such requirements
+  from previous questions if the new message did not ask for them.
+
+JSON only — no explanation, no markdown.
