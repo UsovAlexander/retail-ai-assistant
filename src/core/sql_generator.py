@@ -11,6 +11,7 @@ Pipeline (spec §5.2, see [[Text_to_SQL]]):
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 from dataclasses import dataclass, field
 
@@ -47,7 +48,17 @@ class SQLResult:
 
 
 def _load_system_prompt() -> str:
-    return (PROMPTS_DIR / "sql_system.txt").read_text(encoding="utf-8")
+    """Load the dialect rules, anchoring the model to the real current date.
+
+    Without this anchor the model has no way to resolve a bare month name
+    («за май») to a year — live bug: it invented May 2023 (before the data
+    starts) and returned an empty result.
+    """
+    template = (PROMPTS_DIR / "sql_system.txt").read_text(encoding="utf-8")
+    today = dt.date.today()
+    return template.replace(
+        "{TODAY}", f"{today.isoformat()} ({today.year}, month {today.month})"
+    )
 
 
 def _retrieve_schema(question: str) -> str:
