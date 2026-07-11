@@ -63,10 +63,10 @@ def render_response(resp: AssistantResponse, idx: int) -> None:
     if resp.text:
         st.markdown(resp.text)
     if resp.chart_path is not None and Path(resp.chart_path).exists():
-        st.image(str(resp.chart_path), use_container_width=True)
+        st.image(str(resp.chart_path), width="stretch")
     if resp.table_preview:
         with st.expander(f"Таблица · первые {len(resp.table_preview)} строк"):
-            st.dataframe(resp.table_preview, use_container_width=True)
+            st.dataframe(resp.table_preview, width="stretch")
     if resp.excel_path is not None and Path(resp.excel_path).exists():
         st.download_button(
             "📥 Скачать Excel",

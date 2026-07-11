@@ -43,7 +43,15 @@ ClickHouse dialect tips:
 - Joins: use explicit INNER JOIN ... ON / USING. Give result columns clear aliases.
 - Top-N: ORDER BY <metric> DESC LIMIT N.
 - Window functions are supported: rank()/row_number()/sum() OVER (PARTITION BY ...),
-  lagInFrame(...) OVER (ORDER BY ...).
+  lagInFrame(...) OVER (ORDER BY ...). BUT never put a window function inside a
+  GROUP BY query's select list together with plain aggregates (no
+  `groupArray(...) OVER (...)` mixed with sum()/GROUP BY — that fails with
+  NOT_AN_AGGREGATE). If you need both aggregation and a window, aggregate in a
+  subquery first, apply the window outside.
+- Return only the columns the question asks for — do not invent extra
+  array/"dynamics" columns.
+- If a correction attempt is requested after an error, SIMPLIFY the query
+  (drop the fancy construct) instead of retrying the same shape.
 - Always include a LIMIT (<= 1000) unless the result is a single aggregate row.
 
 You will be given the most relevant table schemas and a few example

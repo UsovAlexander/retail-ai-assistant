@@ -71,7 +71,18 @@ def condense(question: str, history: list[HistoryTurn]) -> str:
     except Exception as exc:  # noqa: BLE001 - best-effort step
         logger.warning("condense failed (%s) — using the raw question", exc)
         return question
-    return rewritten or question
+    if not rewritten:
+        return question
+    # Guard against over-merging: a message that already reads as a full
+    # question (>= 5 words) must not balloon in the rewrite (seen live: a
+    # standalone question got the previous SQL formula merged into it).
+    n_orig, n_new = len(question.split()), len(rewritten.split())
+    if n_orig >= 5 and n_new > 2 * n_orig:
+        logger.warning(
+            "condense over-merged (%d -> %d words) — using the raw question", n_orig, n_new
+        )
+        return question
+    return rewritten
 
 
 def classify(question: str) -> IntentResult:
