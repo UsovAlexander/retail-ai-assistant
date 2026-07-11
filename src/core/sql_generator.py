@@ -61,10 +61,22 @@ def _retrieve_few_shot(question: str) -> str:
     return "\n\n".join(blocks)
 
 
-def _build_user_content(question: str, schema: str, examples: str) -> str:
+def _build_user_content(
+    question: str, schema: str, examples: str, prev_sql: str | None = None
+) -> str:
+    prev_block = ""
+    if prev_sql:
+        prev_block = (
+            "PREVIOUS QUERY (the question below REFINES it):\n"
+            f"{prev_sql}\n"
+            "Modify the previous query: KEEP all its columns, filters, grouping "
+            "and ORDER BY exactly as they are unless the question explicitly "
+            "changes them; only add/change what is asked.\n\n"
+        )
     return (
         f"SCHEMA (most relevant tables):\n{schema}\n\n"
         f"EXAMPLES (similar question → reference SQL):\n{examples}\n\n"
+        f"{prev_block}"
         f"QUESTION: {question}\nSQL:"
     )
 
@@ -76,15 +88,20 @@ def _execute(client: Client, sql: str) -> tuple[list[str], list[dict]]:
     return columns, rows
 
 
-def generate_sql(question: str) -> SQLResult:
-    """Generate, validate and execute SQL for a question, with retry-on-error."""
+def generate_sql(question: str, prev_sql: str | None = None) -> SQLResult:
+    """Generate, validate and execute SQL for a question, with retry-on-error.
+
+    ``prev_sql`` — the previous turn's query when the question is a follow-up
+    refinement («добавь …», «включая …»): the model must extend that query
+    (keeping columns/filters/ordering) instead of building a fresh one.
+    """
     system = _load_system_prompt()
     schema = _retrieve_schema(question)
     examples = _retrieve_few_shot(question)
 
     messages: list[dict[str, str]] = [
         {"role": "system", "content": system},
-        {"role": "user", "content": _build_user_content(question, schema, examples)},
+        {"role": "user", "content": _build_user_content(question, schema, examples, prev_sql)},
     ]
 
     client = get_client(database=get_settings().ch_database)

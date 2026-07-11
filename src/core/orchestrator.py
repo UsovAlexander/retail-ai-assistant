@@ -129,7 +129,12 @@ def ask(question: str, history: list[HistoryTurn] | None = None) -> AssistantRes
         if intent.intent == "chitchat":
             return AssistantResponse(text=intent.reply or FALLBACK_CHITCHAT)
 
-        sql_result = generate_sql(resolved)
+        # For a condensed follow-up, hand the previous SQL to the generator so
+        # it EXTENDS that query (columns/filters/ordering preserved) instead of
+        # rebuilding from scratch (live bug: «добавь UPT и ATV» re-ranked the
+        # top-10 stores by ATV and dropped columns).
+        prev_sql = history[-1][1] if (history and resolved_out) else None
+        sql_result = generate_sql(resolved, prev_sql=prev_sql)
         if not sql_result.ok:
             return AssistantResponse(
                 text=SQL_FAILURE_TEXT, sql=sql_result.sql, error=sql_result.error,

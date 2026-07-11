@@ -43,6 +43,9 @@ Data rules:
 - Answer exactly what is asked with the minimal columns needed. For a "сколько /
   how many" question, return a single scalar via count()/countIf() — do not return
   one row per item.
+- «Топ N магазинов/городов/товаров/продавцов» WITHOUT an explicit metric means
+  ranked by REVENUE (ORDER BY revenue DESC). «Добавь/включая X» adds columns —
+  it NEVER changes the ranking metric and never removes existing columns.
 - Sales history spans 2024-01-01 .. 2026-12-31 — INCLUDING dates in the future
   relative to today. Never use an open-ended `sale_date >= ...` filter for a
   relative period — always bound the range on both sides.
