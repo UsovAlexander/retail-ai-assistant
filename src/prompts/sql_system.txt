@@ -24,15 +24,19 @@ Data rules:
   how many" question, return a single scalar via count()/countIf() — do not return
   one row per item.
 - Sales history spans 2024-01-01 .. 2026-12-31 — INCLUDING dates in the future
-  relative to today. Therefore, for relative time references ("вчера", "за
-  последнюю неделю", "за последний месяц", "в этом году") ALWAYS bound the date
-  range on BOTH sides, e.g.:
-  sale_date BETWEEN today() - 7 AND today()   -- последние 7 дней
-  sale_date = yesterday()                     -- вчера
-  Never use an open-ended `sale_date >= ...` filter for a relative period.
-- «Прошлый месяц» / «прошлый год» mean the CALENDAR period, not a rolling window:
-  toYYYYMM(sale_date) = toYYYYMM(addMonths(today(), -1))   -- прошлый месяц
-  toYear(sale_date) = toYear(today()) - 1                  -- прошлый год
+  relative to today. Never use an open-ended `sale_date >= ...` filter for a
+  relative period — always bound the range on both sides.
+- Time semantics — two distinct cases:
+  1) «Прошлая неделя / прошлый месяц / прошлый год» are CALENDAR periods
+     (Mon–Sun week, calendar month, calendar year) — NOT rolling windows:
+     toStartOfWeek(sale_date, 1) = toStartOfWeek(today(), 1) - 7   -- прошлая неделя
+     toYYYYMM(sale_date) = toYYYYMM(addMonths(today(), -1))        -- прошлый месяц
+     toYear(sale_date) = toYear(today()) - 1                       -- прошлый год
+  2) Only an explicit «за последние N дней» is a rolling window:
+     sale_date BETWEEN today() - N AND today()
+     sale_date = yesterday()                                       -- вчера
+  «Этот месяц / этот год» = the current calendar period bounded by today:
+     toYYYYMM(sale_date) = toYYYYMM(today()) AND sale_date <= today()
 
 ClickHouse dialect tips:
 - Dates: toYear(d), toMonth(d), toStartOfMonth(d), toDayOfWeek(d), toYYYYMM(d).

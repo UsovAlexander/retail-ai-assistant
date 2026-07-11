@@ -350,8 +350,9 @@ FEW_SHOT: list[dict] = [
     },
     {
         # The dataset contains future-dated sales, so relative periods must be
-        # bounded on BOTH sides (see sql_system.txt).
-        "question": "Продажи и выручка по дням за последнюю неделю.",
+        # bounded on BOTH sides (see sql_system.txt). «Последние N дней» is the
+        # only rolling-window phrasing.
+        "question": "Продажи и выручка по дням за последние 7 дней.",
         "sql": (
             "SELECT sale_date, count() AS sales, "
             "round(sum(quantity * price * (1 - discount_pct / 100))) AS revenue "
@@ -359,6 +360,15 @@ FEW_SHOT: list[dict] = [
             "GROUP BY sale_date ORDER BY sale_date"
         ),
         "tags": ["time_series", "relative_dates"],
+    },
+    {
+        # «Прошлая неделя» is the previous CALENDAR week (Mon–Sun).
+        "question": "Выручка за прошлую неделю.",
+        "sql": (
+            "SELECT round(sum(quantity * price * (1 - discount_pct / 100))) AS revenue "
+            "FROM sales WHERE toStartOfWeek(sale_date, 1) = toStartOfWeek(today(), 1) - 7"
+        ),
+        "tags": ["aggregation", "relative_dates"],
     },
     {
         "question": "Сколько продаж было вчера?",

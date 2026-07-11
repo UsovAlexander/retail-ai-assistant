@@ -50,7 +50,18 @@ nested-count few-shot example, or a post-check that wraps such shapes.
   (through 2026-12-31, see [[Data]]). Found live via the Telegram bot: «продажи
   по дням за последнюю неделю» generated an open `>= today()-7` filter and
   returned 182 days (through Dec 2026) instead of 8. Fixed in `sql_system.txt`
-  + two `relative_dates` few-shot examples (28 total now).
+  + `relative_dates` few-shot examples.
+- **Time semantics convention (user-confirmed)**: «прошлая неделя / прошлый
+  месяц / прошлый год» are **calendar periods** (Mon–Sun week / calendar month /
+  calendar year), never rolling windows:
+  - неделя: `toStartOfWeek(sale_date, 1) = toStartOfWeek(today(), 1) - 7`
+  - месяц: `toYYYYMM(sale_date) = toYYYYMM(addMonths(today(), -1))`
+  - год: `toYear(sale_date) = toYear(today()) - 1`
+  Only an explicit «за последние N дней» is a rolling window (`BETWEEN today()-N
+  AND today()`). «Этот месяц/год» = current calendar period bounded by `today()`.
+  Encoded in `sql_system.txt` + 4 `relative_dates` few-shot examples (30 total).
+  Found live: «топ продавцов за прошлый месяц» had produced a rolling
+  May 11 – Jun 10 window instead of calendar June.
 
 - Revenue is always `sum(quantity * price * (1 - discount_pct/100))`.
 - **Avoid join fan-out when aggregating the fact table against `plans`**: never
