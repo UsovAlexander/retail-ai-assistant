@@ -365,6 +365,18 @@ FEW_SHOT: list[dict] = [
         "sql": "SELECT count() AS sales FROM sales WHERE sale_date = yesterday()",
         "tags": ["aggregation", "relative_dates"],
     },
+    {
+        # «Прошлый месяц» = calendar month, not a rolling 30-day window.
+        "question": "Топ-10 продавцов по выручке за прошлый месяц.",
+        "sql": (
+            "SELECT e.full_name AS employee, "
+            "round(sum(sa.quantity * sa.price * (1 - sa.discount_pct / 100))) AS revenue "
+            "FROM sales AS sa INNER JOIN employees AS e ON sa.employee_id = e.employee_id "
+            "WHERE toYYYYMM(sa.sale_date) = toYYYYMM(addMonths(today(), -1)) "
+            "GROUP BY employee ORDER BY revenue DESC LIMIT 10"
+        ),
+        "tags": ["join", "top_n", "relative_dates"],
+    },
 ]
 
 

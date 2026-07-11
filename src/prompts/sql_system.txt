@@ -27,9 +27,12 @@ Data rules:
   relative to today. Therefore, for relative time references ("вчера", "за
   последнюю неделю", "за последний месяц", "в этом году") ALWAYS bound the date
   range on BOTH sides, e.g.:
-  sale_date BETWEEN today() - 7 AND today()   -- last week
-  sale_date = yesterday()                     -- yesterday
+  sale_date BETWEEN today() - 7 AND today()   -- последние 7 дней
+  sale_date = yesterday()                     -- вчера
   Never use an open-ended `sale_date >= ...` filter for a relative period.
+- «Прошлый месяц» / «прошлый год» mean the CALENDAR period, not a rolling window:
+  toYYYYMM(sale_date) = toYYYYMM(addMonths(today(), -1))   -- прошлый месяц
+  toYear(sale_date) = toYear(today()) - 1                  -- прошлый год
 
 ClickHouse dialect tips:
 - Dates: toYear(d), toMonth(d), toStartOfMonth(d), toDayOfWeek(d), toYYYYMM(d).
