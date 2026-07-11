@@ -59,7 +59,12 @@ Entry point: `core.ask(question, history=None) -> AssistantResponse`
 3. **Text-to-SQL** (data intents): schema RAG + few-shot RAG → prompt → Ollama →
    SQL → validate → execute (retry on error). See [[Text_to_SQL]].
 4. **Summarizer**: 2–4 sentence Russian analytical summary from the first 50
-   rows (`src/core/summarizer.py`, temp 0.3). See [[Interfaces]].
+   rows (`src/core/summarizer.py`, temp 0.3). The prompt includes a
+   **deterministic facts block** (`compute_facts()`: max/min with their row
+   labels, total, average — computed in Python) that the model MUST use for any
+   max/min/leader/total claim. Reason: LLMs (even 70B) misread which table row
+   is largest — a live summary called February the maximum when March was.
+   Arithmetic belongs in code; the LLM only verbalizes. Unit-tested.
 5. **Artifacts**: `sql_with_chart` → PNG (best-effort); `sql_with_excel` → xlsx
    (+ row-count warning past 100k). See [[Artifacts]].
 6. Return `AssistantResponse` (text, sql, table_preview[:50], chart_path, excel_path, error).
