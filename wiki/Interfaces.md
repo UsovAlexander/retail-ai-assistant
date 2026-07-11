@@ -6,10 +6,23 @@ Source: `raw/project_spec_en.md` §6.
 
 Both interfaces are thin wrappers around `core.ask(question) -> AssistantResponse`.
 
+## Shared conversation history (`src/core/chat_store.py`)
+
+Every completed exchange is logged to **ClickHouse `retail_demo.chat_history`**
+(one row per Q&A turn: question, resolved_question, answer, SQL, artifact paths,
+JSON preview; `ORDER BY (source, chat_id, ts)`). Both interfaces write; the
+desktop renders any chat back — including Telegram ones. Explicit dialogue
+boundaries: «➕ Новый чат» (desktop) / «🆕 Новый запрос» or `/new` (telegram) —
+follow-up condensing only chains questions *within* one chat. The data
+generator now recreates only the six **data** tables (`DATA_TABLES`), so chat
+history survives regeneration. Deleting a chat uses ClickHouse lightweight
+`DELETE`.
+
 ## Desktop (`src/ui_desktop/app.py`) — implemented
-- Streamlit chat: `st.chat_message` + `st.chat_input`; history in
-  `st.session_state.messages` (user text + full `AssistantResponse` objects,
-  re-rendered from artifact paths on rerun).
+- **GPT-style multi-chat**: sidebar «➕ Новый чат» + chat list (🖥️ desktop /
+  ✈️ telegram icons; telegram chats open read-only), «🗑️ Удалить текущий чат».
+  All rendering is store-backed (`chat_store.load_turns` after each exchange),
+  so chats persist across app restarts and browser refreshes.
 - Charts inline via `st.image(response.chart_path)` — **not** re-rendered figures.
 - Excel via `st.download_button(data=Path(...).read_bytes())` (unique `key` per
   message index so history replays don't collide).
@@ -37,7 +50,10 @@ Both interfaces are thin wrappers around `core.ask(question) -> AssistantRespons
   (`_format_rows`: 🥇🥈🥉 for rankings, ru number formatting, bold values).
 - User whitelist by telegram `user_id` (`TELEGRAM_ALLOWED_USERS`); denied users
   see their own ID so an admin can whitelist them. **Empty whitelist = deny all.**
-- Commands: `/start`, `/help` (capabilities + example questions).
+- Commands: `/start`, `/help` (capabilities + example questions), `/new`.
+  Persistent reply keyboard with «🆕 Новый запрос» — clears the follow-up
+  context AND starts a new stored session id (`tg-<chat>-<uuid>`), so each
+  dialogue shows as a separate chat in the desktop history.
 - The sync core runs via `asyncio.to_thread` so polling stays responsive;
   `typing` chat action while thinking. HTML parse mode, everything escaped.
 - Run: `python -m src.ui_telegram.bot`.

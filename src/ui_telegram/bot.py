@@ -20,24 +20,43 @@ import asyncio
 import datetime as dt
 import html
 import logging
+import uuid
 from collections import defaultdict, deque
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ChatAction, ParseMode
 from aiogram.filters import Command, CommandStart
-from aiogram.types import FSInputFile, Message
+from aiogram.types import FSInputFile, KeyboardButton, Message, ReplyKeyboardMarkup
 
 from src.config import configure_logging, get_settings
-from src.core import AssistantResponse, HistoryTurn, ask
+from src.core import AssistantResponse, HistoryTurn, ask, chat_store
 
 logger = logging.getLogger("tg_bot")
 
 router = Router()
 
 # Recent (question, sql) turns per chat — lets follow-ups («добавь …») work.
+# The «Новый запрос» button (or /new) clears it: explicit dialogue boundary.
 HISTORY_TURNS = 3
 _history: dict[int, deque[HistoryTurn]] = defaultdict(lambda: deque(maxlen=HISTORY_TURNS))
+
+# Session id per Telegram chat: a new one on /new, so each dialogue shows up
+# as a separate chat in the desktop UI's history (chat_store).
+_session: dict[int, str] = {}
+
+
+def _session_id(chat_id: int) -> str:
+    if chat_id not in _session:
+        _session[chat_id] = f"tg-{chat_id}-{uuid.uuid4().hex[:6]}"
+    return _session[chat_id]
+
+NEW_CHAT_TEXT = "🆕 Новый запрос"
+MAIN_KEYBOARD = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text=NEW_CHAT_TEXT)]],
+    resize_keyboard=True,
+    is_persistent=True,
+)
 
 MAX_MESSAGE = 4096
 MAX_CAPTION = 1024
@@ -52,7 +71,9 @@ WELCOME = (
     "• Покажи график выручки по месяцам\n"
     "• Топ-5 магазинов по выручке\n"
     "• Какие магазины не выполнили план в прошлом месяце?\n"
-    "• Выгрузи продажи по категориям в Excel"
+    "• Выгрузи продажи по категориям в Excel\n\n"
+    "🔗 Вопросы связываются между собой — можно уточнять: «а по месяцам», "
+    "«добавь %». Кнопка «🆕 Новый запрос» (или /new) сбрасывает контекст."
 )
 HELP_TEXT = WELCOME
 DENIED = (
@@ -144,10 +165,10 @@ async def _send_response(message: Message, resp: AssistantResponse) -> None:
     if resp.chart_path is not None and resp.chart_path.exists():
         photo = FSInputFile(resp.chart_path)
         if len(text) <= MAX_CAPTION:
-            await message.answer_photo(photo, caption=text)
+            await message.answer_photo(photo, caption=text, reply_markup=MAIN_KEYBOARD)
         else:
             await message.answer(_truncate(text, MAX_MESSAGE))
-            await message.answer_photo(photo)
+            await message.answer_photo(photo, reply_markup=MAIN_KEYBOARD)
     elif has_excel:
         assert resp.excel_path is not None
         document = FSInputFile(
@@ -156,12 +177,14 @@ async def _send_response(message: Message, resp: AssistantResponse) -> None:
         if message.bot is not None:
             await message.bot.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
         if len(text) <= MAX_CAPTION:
-            await message.answer_document(document, caption=text)
+            await message.answer_document(document, caption=text, reply_markup=MAIN_KEYBOARD)
         else:
             await message.answer(_truncate(text, MAX_MESSAGE))
-            await message.answer_document(document, caption="📊 Отчёт в Excel")
+            await message.answer_document(
+                document, caption="📊 Отчёт в Excel", reply_markup=MAIN_KEYBOARD
+            )
     else:
-        await message.answer(_truncate(text or "Готово.", MAX_MESSAGE))
+        await message.answer(_truncate(text or "Готово.", MAX_MESSAGE), reply_markup=MAIN_KEYBOARD)
 
 
 @router.message(CommandStart())
@@ -171,7 +194,23 @@ async def cmd_start(message: Message) -> None:
         user_id = message.from_user.id if message.from_user else 0
         await message.answer(DENIED.format(user_id=user_id))
         return
-    await message.answer(WELCOME)
+    await message.answer(WELCOME, reply_markup=MAIN_KEYBOARD)
+
+
+@router.message(Command("new"))
+@router.message(F.text == NEW_CHAT_TEXT)
+async def cmd_new(message: Message) -> None:
+    """Explicit dialogue boundary: stop chaining questions to previous ones."""
+    if not _is_allowed(message):
+        user_id = message.from_user.id if message.from_user else 0
+        await message.answer(DENIED.format(user_id=user_id))
+        return
+    _history[message.chat.id].clear()
+    _session.pop(message.chat.id, None)  # next question starts a new stored chat
+    await message.answer(
+        "🧹 Контекст сброшен — следующий вопрос будет обработан с чистого листа.",
+        reply_markup=MAIN_KEYBOARD,
+    )
 
 
 @router.message(F.text)
@@ -194,6 +233,10 @@ async def handle_question(message: Message) -> None:
         _history[message.chat.id].append(
             (resp.resolved_question or message.text, resp.sql)
         )
+    # Shared conversation log (rendered by the desktop UI). Best-effort.
+    await asyncio.to_thread(
+        chat_store.log_turn, "telegram", _session_id(message.chat.id), message.text, resp
+    )
 
 
 async def main_async() -> None:
@@ -203,6 +246,8 @@ async def main_async() -> None:
         raise SystemExit("TELEGRAM_BOT_TOKEN is not set in .env")
     if not s.allowed_user_ids:
         logger.warning("TELEGRAM_ALLOWED_USERS is empty — the bot will refuse everyone.")
+
+    chat_store.ensure_table()
 
     bot = Bot(
         token=s.telegram_bot_token,

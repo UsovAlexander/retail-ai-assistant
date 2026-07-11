@@ -227,11 +227,19 @@ DDL_STATEMENTS: list[str] = [
 ]
 
 
+DATA_TABLES = ["stores", "departments", "employees", "products", "sales", "plans"]
+
+
 def recreate_database(client: Client) -> None:
-    """Drop and recreate ``retail_demo`` (idempotent), then create all tables."""
-    logger.info("Dropping and recreating database retail_demo ...")
-    client.command("DROP DATABASE IF EXISTS retail_demo")
-    client.command("CREATE DATABASE retail_demo")
+    """Recreate the six DATA tables from scratch (idempotent).
+
+    The database itself and the ``chat_history`` table (conversation log shared
+    by the interfaces, see src/core/chat_store.py) are preserved.
+    """
+    logger.info("Recreating retail_demo data tables ...")
+    client.command("CREATE DATABASE IF NOT EXISTS retail_demo")
+    for table in DATA_TABLES:
+        client.command(f"DROP TABLE IF EXISTS retail_demo.{table}")
     for ddl in DDL_STATEMENTS:
         client.command(ddl)
     # Future-dated sales exist only so the demo doesn't need daily refills —

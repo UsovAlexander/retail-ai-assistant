@@ -2,15 +2,20 @@
 
 Run: ``streamlit run src/ui_desktop/app.py`` → http://localhost:8501
 
+GPT-style multi-chat: a «Новый чат» button plus the chat list in the sidebar.
+History is stored in ClickHouse (`retail_demo.chat_history`, see
+src/core/chat_store.py) and is shared with the Telegram bot — Telegram
+dialogues appear in the sidebar too (read-only). Follow-up questions chain
+(condense) ONLY within the current chat; «Новый чат» is the explicit boundary.
+
 The core produces file artifacts (PNG charts, xlsx) — this UI only *displays*
-them (``st.image`` / ``st.download_button``), it never re-renders figures
-(spec §12). Includes a sidebar LLM-backend toggle (local / external / auto) so
-answers from the local and external models can be compared per request.
+them (spec §12). Includes a sidebar LLM-backend toggle (local / external / auto).
 """
 
 from __future__ import annotations
 
 import sys
+import uuid
 from pathlib import Path
 
 import streamlit as st
@@ -21,7 +26,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.config import configure_logging, get_settings  # noqa: E402
-from src.core import AssistantResponse, HistoryTurn, ask  # noqa: E402
+from src.core import AssistantResponse, ask, chat_store  # noqa: E402
 from src.core.llm_client import active_model_label, use_backend  # noqa: E402
 
 configure_logging()
@@ -30,6 +35,8 @@ settings = get_settings()
 st.set_page_config(page_title="Retail AI Assistant", page_icon="💎", layout="centered")
 
 EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+MAX_TITLE = 40
+SOURCE_ICONS = {"desktop": "🖥️", "telegram": "✈️"}
 BACKENDS = ["local", "external", "auto"]
 BACKEND_LABELS = {
     "local": "🖥️ Локальная (Ollama)",
@@ -38,22 +45,30 @@ BACKEND_LABELS = {
 }
 EXAMPLES = [
     "Выручка по городам за 2025 год",
-    "Покажи график выручки по месяцам за 2025 год",
+    "Покажи график выручки по месяцам",
     "Топ-5 магазинов по выручке",
     "Выгрузи топ-10 товаров по выручке в Excel",
 ]
 
 
-def build_history(messages: list[dict]) -> list[HistoryTurn]:
-    """Recent (question, sql) turns from the chat history, for follow-ups."""
-    turns: list[HistoryTurn] = []
-    for i in range(len(messages) - 1):
-        cur, nxt = messages[i], messages[i + 1]
-        if cur["role"] == "user" and nxt["role"] == "assistant":
-            resp: AssistantResponse = nxt["response"]
-            if resp.error is None and resp.sql:
-                turns.append((resp.resolved_question or cur["content"], resp.sql))
-    return turns[-3:]
+@st.cache_resource
+def _init_store() -> bool:
+    chat_store.ensure_table()
+    return True
+
+
+_init_store()
+
+# --- Session state -------------------------------------------------------------
+if "current_source" not in st.session_state:
+    st.session_state.current_source = "desktop"
+if "current_chat" not in st.session_state:
+    st.session_state.current_chat = f"ds-{uuid.uuid4().hex[:8]}"
+
+
+def _switch(source: str, chat_id: str) -> None:
+    st.session_state.current_source = source
+    st.session_state.current_chat = chat_id
 
 
 def render_response(resp: AssistantResponse, idx: int) -> None:
@@ -73,7 +88,7 @@ def render_response(resp: AssistantResponse, idx: int) -> None:
             data=Path(resp.excel_path).read_bytes(),
             file_name=Path(resp.excel_path).name,
             mime=EXCEL_MIME,
-            key=f"dl_{idx}_{Path(resp.excel_path).name}",
+            key=f"dl_{st.session_state.current_chat}_{idx}",
         )
     if resp.sql:
         with st.expander("SQL"):
@@ -82,9 +97,40 @@ def render_response(resp: AssistantResponse, idx: int) -> None:
         st.caption(f"⚠️ {resp.error}")
 
 
-# --- Sidebar: backend toggle -------------------------------------------------
+# --- Sidebar: chats + backend toggle -------------------------------------------
+chats = chat_store.list_chats()
+
 with st.sidebar:
-    st.header("⚙️ Настройки")
+    if st.button("➕ Новый чат", width="stretch", type="primary"):
+        _switch("desktop", f"ds-{uuid.uuid4().hex[:8]}")
+        st.rerun()
+
+    if chats:
+        st.caption("Чаты (🖥️ desktop · ✈️ telegram)")
+    for c in chats:
+        is_current = (
+            c["chat_id"] == st.session_state.current_chat
+            and c["source"] == st.session_state.current_source
+        )
+        icon = SOURCE_ICONS.get(c["source"], "💬")
+        title = (c["title"] or "…")[:MAX_TITLE]
+        if st.button(
+            f"{icon} {title}",
+            key=f"chat_{c['source']}_{c['chat_id']}",
+            width="stretch",
+            disabled=is_current,
+        ):
+            _switch(c["source"], c["chat_id"])
+            st.rerun()
+
+    known_ids = {(c["source"], c["chat_id"]) for c in chats}
+    if (st.session_state.current_source, st.session_state.current_chat) in known_ids:
+        if st.button("🗑️ Удалить текущий чат", width="stretch"):
+            chat_store.delete_chat(st.session_state.current_source, st.session_state.current_chat)
+            _switch("desktop", f"ds-{uuid.uuid4().hex[:8]}")
+            st.rerun()
+
+    st.divider()
     backend = st.radio(
         "Модель (LLM backend)",
         BACKENDS,
@@ -101,33 +147,37 @@ with st.sidebar:
     st.caption("Примеры вопросов:")
     for ex in EXAMPLES:
         st.caption(f"• {ex}")
-    st.divider()
-    if st.button("🗑️ Очистить чат"):
-        st.session_state.messages = []
-        st.rerun()
+    st.caption(
+        "🔗 Вопросы внутри чата связываются (можно уточнять: «а по месяцам», "
+        "«добавь %»). «➕ Новый чат» начинает с чистого листа."
+    )
 
 
-# --- Chat --------------------------------------------------------------------
+# --- Chat ------------------------------------------------------------------------
 st.title("💎 Retail AI Assistant")
 st.caption("Аналитический ассистент по продажам ювелирной сети. Спросите на русском.")
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+source = st.session_state.current_source
+chat_id = st.session_state.current_chat
+turns = chat_store.load_turns(source, chat_id)
 
-for i, msg in enumerate(st.session_state.messages):
-    with st.chat_message(msg["role"]):
-        if msg["role"] == "user":
-            st.markdown(msg["content"])
-        else:
-            render_response(msg["response"], i)
-
-if prompt := st.chat_input("Спросите про выручку, магазины, план, сотрудников…"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+for i, turn in enumerate(turns):
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(turn["question"])
     with st.chat_message("assistant"):
-        with st.spinner(f"Анализирую ({active_model_label(backend)})…"):
-            with use_backend(backend):
-                response = ask(prompt, build_history(st.session_state.messages[:-1]))
-        render_response(response, len(st.session_state.messages))
-    st.session_state.messages.append({"role": "assistant", "response": response})
+        render_response(chat_store.turn_to_response(turn), i)
+
+if source == "telegram":
+    st.info("✈️ Это переписка из Telegram — просмотр. Продолжить можно в боте, "
+            "или начните новый чат здесь.")
+else:
+    if prompt := st.chat_input("Спросите про выручку, магазины, план, сотрудников…"):
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        with st.chat_message("assistant"):
+            with st.spinner(f"Анализирую ({active_model_label(backend)})…"):
+                with use_backend(backend):
+                    response = ask(prompt, chat_store.build_history(source, chat_id))
+            render_response(response, len(turns))
+        chat_store.log_turn(source, chat_id, prompt, response)
+        st.rerun()
