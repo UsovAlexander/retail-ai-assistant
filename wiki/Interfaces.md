@@ -20,7 +20,7 @@ history survives regeneration. Deleting a chat uses ClickHouse lightweight
 
 ## Desktop (`src/ui_desktop/app.py`) — implemented
 - **GPT-style multi-chat**: sidebar «➕ Новый чат» + chat list (🖥️ desktop /
-  ✈️ telegram icons; telegram chats open read-only), «🗑️ Удалить текущий чат».
+  📱 telegram icons; telegram chats open read-only), «🗑️ Удалить текущий чат».
   All rendering is store-backed (`chat_store.load_turns` after each exchange),
   so chats persist across app restarts and browser refreshes.
 - Charts inline via `st.image(response.chart_path)` — **not** re-rendered figures.

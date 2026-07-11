@@ -36,7 +36,7 @@ st.set_page_config(page_title="Retail AI Assistant", page_icon="💎", layout="c
 
 EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 MAX_TITLE = 40
-SOURCE_ICONS = {"desktop": "🖥️", "telegram": "✈️"}
+SOURCE_ICONS = {"desktop": "🖥️", "telegram": "📱"}
 BACKENDS = ["local", "external", "auto"]
 BACKEND_LABELS = {
     "local": "🖥️ Локальная (Ollama)",
@@ -107,7 +107,7 @@ with st.sidebar:
         st.rerun()
 
     if chats:
-        st.caption("Чаты (🖥️ desktop · ✈️ telegram)")
+        st.caption("Чаты (🖥️ desktop · 📱 telegram)")
     for c in chats:
         is_current = (
             c["chat_id"] == st.session_state.current_chat
@@ -169,7 +169,7 @@ for i, turn in enumerate(turns):
         render_response(chat_store.turn_to_response(turn), i)
 
 if source == "telegram":
-    st.info("✈️ Это переписка из Telegram — просмотр. Продолжить можно в боте, "
+    st.info("📱 Это переписка из Telegram — просмотр. Продолжить можно в боте, "
             "или начните новый чат здесь.")
 else:
     if prompt := st.chat_input("Спросите про выручку, магазины, план, сотрудников…"):
