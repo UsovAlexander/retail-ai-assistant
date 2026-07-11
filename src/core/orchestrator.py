@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from typing import Literal
 
 from pydantic import BaseModel, ValidationError
@@ -47,23 +46,16 @@ class IntentResult(BaseModel):
 
 MAX_HISTORY_TURNS = 3
 
-# Lexical signs that a message references the dialog (a fragment, not a full
-# question): «добавь …», «эту таблицу», «а по месяцам», «ещё», «убери» …
-_FRAGMENT_MARKERS = re.compile(
-    r"\b(добавь|добавить|убери|убрать|ещё|еще|эт(?:у|ой|ом|о|и|их)|"
-    r"такж[ае]|тоже|вместо|оставь|их|него|неё|нее)\b"
-    r"|^\s*(?:а|и)\s",
-    re.IGNORECASE,
-)
-
 
 def condense(question: str, history: list[HistoryTurn]) -> str:
     """Resolve a follow-up into a self-contained question using recent turns.
 
-    The model classifies the message explicitly (followup true/false, JSON).
-    A length guard applies ONLY to messages without fragment markers — a real
-    «добавь …» merge legitimately grows several-fold (live lesson: a plain
-    word-count guard rolled back honest merges and broke follow-ups).
+    The model classifies the message explicitly (followup true/false, JSON;
+    the prompt carries few-shot examples of both classes). There is
+    deliberately NO heuristic rollback here: length/marker guards twice rolled
+    back honest «добавь …»/«отдельный график …» merges in live use, and a
+    rollback yields garbage (context lost) while a rare wrong merge stays
+    visible to the user via «🔎 Понял как: …» and is easy to correct.
     """
     system = (PROMPTS_DIR / "condense.txt").read_text(encoding="utf-8")
     turns = history[-MAX_HISTORY_TURNS:]
@@ -91,17 +83,6 @@ def condense(question: str, history: list[HistoryTurn]) -> str:
 
     if not followup or not rewritten:
         return question
-
-    # The model says follow-up. If the message has no fragment markers and
-    # already reads as a full question, distrust a ballooning rewrite.
-    if not _FRAGMENT_MARKERS.search(question):
-        n_orig, n_new = len(question.split()), len(rewritten.split())
-        if n_orig >= 5 and n_new > 2 * n_orig:
-            logger.warning(
-                "condense over-merged a marker-less question (%d -> %d words) — using the raw one",
-                n_orig, n_new,
-            )
-            return question
     return rewritten
 
 
