@@ -234,7 +234,15 @@ def recreate_database(client: Client) -> None:
     client.command("CREATE DATABASE retail_demo")
     for ddl in DDL_STATEMENTS:
         client.command(ddl)
-    logger.info("Created %d tables.", len(DDL_STATEMENTS))
+    # Future-dated sales exist only so the demo doesn't need daily refills —
+    # analytically "now" is the boundary. A server-side row policy hides
+    # anything past today from every SELECT, whatever SQL the LLM generates.
+    client.command("DROP ROW POLICY IF EXISTS hide_future_sales ON retail_demo.sales")
+    client.command(
+        "CREATE ROW POLICY hide_future_sales ON retail_demo.sales "
+        "USING sale_date <= today() TO ALL"
+    )
+    logger.info("Created %d tables + hide_future_sales row policy.", len(DDL_STATEMENTS))
 
 
 # --- Directory generation ----------------------------------------------------

@@ -47,8 +47,12 @@ Entry point: `core.ask(question, history=None) -> AssistantResponse`
    (`src/prompts/condense.txt`) into a self-contained question; standalone
    questions pass through unchanged. The rewritten form goes into
    `AssistantResponse.resolved_question` (UIs show «🔎 Понял как: …») and the
-   rest of the pipeline — including RAG retrieval — runs on it. Best-effort:
-   any condense failure falls back to the raw question.
+   SQL/summarize/chart steps run on it. Best-effort: any condense failure
+   falls back to the raw question.
+   **Intent, however, is classified on the ORIGINAL message** — presentation
+   verbs («покажи график», «выгрузи в Excel») live in the user's own phrasing
+   and the condense rewrite may drop them (live bug: «Покажи динамику…» was
+   condensed to «Динамика…» → classified `sql_query` → no chart).
 1. **Orchestrator** classifies intent (structured JSON, temp 0.1): `sql_query`,
    `sql_with_chart`, `sql_with_excel`, `chitchat` (`src/prompts/intent_router.txt`).
 2. **chitchat** → short capability reply (from the router, static fallback).

@@ -106,7 +106,10 @@ def ask(question: str, history: list[HistoryTurn] | None = None) -> AssistantRes
             if resolved.strip().lower() != question.strip().lower():
                 logger.info("condensed follow-up -> %s", resolved)
 
-        intent = classify(resolved)
+        # Intent is classified on the ORIGINAL message: presentation verbs
+        # («покажи график», «выгрузи в Excel») live in the user's own phrasing
+        # and may be dropped by the condense rewrite.
+        intent = classify(question)
         logger.info("intent = %s", intent.intent)
 
         resolved_out = resolved if resolved.strip().lower() != question.strip().lower() else None

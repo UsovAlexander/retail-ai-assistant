@@ -11,5 +11,7 @@ Rules:
 - Keep every constraint from the previous question that the user did not change
   (period, grouping, filters, top-N).
 - Preserve the user's language (Russian). One concise question.
+- PRESERVE wording that signals the desired output format — «покажи график /
+  построй диаграмму / динамику», «выгрузи в Excel» — never drop such verbs.
 - Return ONLY the rewritten question text — no explanations, no quotes, no
   markdown.

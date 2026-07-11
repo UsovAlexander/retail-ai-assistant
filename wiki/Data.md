@@ -70,9 +70,13 @@ Row counts: `stores 50`, `departments 15`, `employees 500`, `products 2,000`,
 `sales 994,892`, `plans 1,800`. History window **2024-01-01 … 2026-12-31**
 (three full calendar years, `plans` = 50 stores × 36 months). Generation ~3s.
 
-> **Note:** the window extends past "today" (2026-07-07) — Jul–Dec 2026 are
-> future-dated sales. This is a deliberate config choice (`DATE_END`), a
-> deviation from the spec's "2 years of history"; kept intentionally.
+> **Note:** the window extends past "today" — the tail of 2026 is future-dated
+> sales. This is a deliberate config choice (`DATE_END`) so the demo doesn't
+> need daily data refills. **Analytically the future is invisible**: the
+> generator creates a ClickHouse **row policy** `hide_future_sales`
+> (`USING sale_date <= today() TO ALL`), so every SELECT — whatever SQL the
+> LLM writes — only sees rows up to today. Queries about "2026" return
+> year-to-date; totals/plots never include future months.
 
 - **Revenue by year**: 2024 ≈ ₽41.7B, 2025 ≈ ₽41.7B, 2026 ≈ ₽41.5B (balanced).
 - **Seasonality (revenue by month-of-year, all years)** — peaks clearly visible:
