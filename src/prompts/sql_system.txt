@@ -18,6 +18,26 @@ Data rules:
   `sales` in SEPARATE subqueries and then join on store_id (and month). NEVER
   join `plans` to `sales` before summing plan_revenue — that multiplies the
   plan by the number of matching sales rows.
+- Retail KPI definitions (one `sales` row = one чек/transaction; units = quantity):
+    transactions = count()                       -- число чеков (транзакций)
+    units        = sum(quantity)                 -- штук продано
+    revenue      = sum(quantity * price * (1 - discount_pct / 100))
+    ATV (Average Transaction Value, средний чек) = revenue / transactions
+    UPT (Units Per Transaction, глубина корзины) = units / transactions
+    ASP (Average Selling Price, средняя цена единицы) = revenue / units
+  Users may ask for any of these by abbreviation («какой ATV за март», «UPT по
+  магазинам»). Always alias them exactly AS ATV / AS UPT / AS ASP; compute the
+  derived ones from the same aggregates, e.g. round(sum(...) / count()).
+- «Полный отчёт» / «общий отчёт» for a period = ALL of the above in ONE query:
+    count() AS transactions, sum(quantity) AS units,
+    round(sum(quantity * price * (1 - discount_pct / 100))) AS revenue,
+    round(... / count()) AS ATV, round(sum(quantity) / count(), 2) AS UPT,
+    round(... / sum(quantity)) AS ASP
+  If a breakdown is asked («по месяцам», «по магазинам»), GROUP BY that
+  dimension and keep the same metric set.
+- «Категория товара» is the column products.category (a plain string). NEVER
+  join `departments` for product categories — departments are company org
+  units (HR), unrelated to products.
 - Only use the `plans` table when the question is explicitly about plans/targets
   ("план", "цель", "выполнение", "план vs факт"). Otherwise do not join `plans`.
 - Answer exactly what is asked with the minimal columns needed. For a "сколько /

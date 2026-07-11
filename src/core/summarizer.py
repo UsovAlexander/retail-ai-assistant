@@ -6,8 +6,10 @@ trends, leaders, anomalies — not a row-by-row retelling.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import logging
+import re
 
 from src.config import PROMPTS_DIR
 from src.core.llm_client import chat
@@ -20,6 +22,41 @@ MAX_FACT_COLS = 3   # numeric columns covered by the verified-facts block
 
 def _is_num(v: object) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+_RU_MONTHS = [
+    "январь", "февраль", "март", "апрель", "май", "июнь",
+    "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь",
+]
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
+
+def _humanize_label(value: object, col: str) -> str:
+    """Turn a date label into a human period name based on the column grain.
+
+    «2024-10-01» in a `quarter` column → «4-й квартал 2024»; in `month` →
+    «октябрь 2024». Deterministic — the LLM repeatedly mislabeled period
+    ordinals when given raw dates (called Q4 'второй квартал')."""
+    d: dt.date | None = None
+    if isinstance(value, (dt.date, dt.datetime)):
+        d = value.date() if isinstance(value, dt.datetime) else value
+    elif isinstance(value, str) and _DATE_RE.match(value):
+        try:
+            d = dt.date.fromisoformat(value[:10])
+        except ValueError:
+            d = None
+    if d is None:
+        return str(value)
+    c = col.lower()
+    if "quarter" in c or "кварт" in c:
+        return f"{(d.month - 1) // 3 + 1}-й квартал {d.year}"
+    if "month" in c or "месяц" in c:
+        return f"{_RU_MONTHS[d.month - 1]} {d.year}"
+    if "week" in c or "недел" in c:
+        return f"неделя с {d:%d.%m.%Y}"
+    if "year" in c or "год" in c:
+        return str(d.year)
+    return str(value)
 
 
 def compute_facts(columns: list[str], rows: list[dict]) -> str:
@@ -36,7 +73,9 @@ def compute_facts(columns: list[str], rows: list[dict]) -> str:
     num_cols = [c for c in columns if _is_num(first.get(c))][:MAX_FACT_COLS]
 
     def label(row: dict) -> str:
-        return str(row.get(label_col)) if label_col else f"строка {rows.index(row) + 1}"
+        if label_col is None:
+            return f"строка {rows.index(row) + 1}"
+        return _humanize_label(row.get(label_col), label_col)
 
     lines = [f"Всего строк: {len(rows)}."]
     if label_col and len(rows) > 1:

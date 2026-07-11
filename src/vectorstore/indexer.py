@@ -376,6 +376,54 @@ FEW_SHOT: list[dict] = [
         "tags": ["aggregation", "relative_dates"],
     },
     {
+        # «Полный/общий отчёт» = the canonical retail KPI set in one query:
+        # transactions, units, revenue + ATV / UPT / ASP.
+        "question": "Сделай полный отчет за март 2026 года.",
+        "sql": (
+            "SELECT count() AS transactions, sum(quantity) AS units, "
+            "round(sum(quantity * price * (1 - discount_pct / 100))) AS revenue, "
+            "round(sum(quantity * price * (1 - discount_pct / 100)) / count()) AS ATV, "
+            "round(sum(quantity) / count(), 2) AS UPT, "
+            "round(sum(quantity * price * (1 - discount_pct / 100)) / sum(quantity)) AS ASP "
+            "FROM sales WHERE toYYYYMM(sale_date) = 202603"
+        ),
+        "tags": ["full_report", "aggregation"],
+    },
+    {
+        "question": "Общий отчет по месяцам за 2025 год.",
+        "sql": (
+            "SELECT toStartOfMonth(sale_date) AS month, count() AS transactions, "
+            "sum(quantity) AS units, "
+            "round(sum(quantity * price * (1 - discount_pct / 100))) AS revenue, "
+            "round(sum(quantity * price * (1 - discount_pct / 100)) / count()) AS ATV, "
+            "round(sum(quantity) / count(), 2) AS UPT, "
+            "round(sum(quantity * price * (1 - discount_pct / 100)) / sum(quantity)) AS ASP "
+            "FROM sales WHERE toYear(sale_date) = 2025 "
+            "GROUP BY month ORDER BY month"
+        ),
+        "tags": ["full_report", "time_series"],
+    },
+    {
+        "question": "Какой средний чек (ATV) и UPT за прошлый месяц?",
+        "sql": (
+            "SELECT round(sum(quantity * price * (1 - discount_pct / 100)) / count()) AS ATV, "
+            "round(sum(quantity) / count(), 2) AS UPT "
+            "FROM sales WHERE toYYYYMM(sale_date) = toYYYYMM(addMonths(today(), -1))"
+        ),
+        "tags": ["kpi", "aggregation", "relative_dates"],
+    },
+    {
+        # KPI by a dimension: категория = products.category (no departments!).
+        "question": "ASP по категориям товаров за 2025 год.",
+        "sql": (
+            "SELECT p.category AS category, "
+            "round(sum(sa.quantity * sa.price * (1 - sa.discount_pct / 100)) / sum(sa.quantity)) AS ASP "
+            "FROM sales AS sa INNER JOIN products AS p ON sa.product_id = p.product_id "
+            "WHERE toYear(sa.sale_date) = 2025 GROUP BY category ORDER BY ASP DESC"
+        ),
+        "tags": ["kpi", "join"],
+    },
+    {
         # «Прошлый месяц» = calendar month, not a rolling 30-day window.
         "question": "Топ-10 продавцов по выручке за прошлый месяц.",
         "sql": (
