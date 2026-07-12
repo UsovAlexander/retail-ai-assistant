@@ -3,15 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Retail AI Assistant — локальный AI-аналитик для ювелирного ритейла</title>
-<meta name="description" content="Вопрос на русском → корректный ClickHouse-SQL, график и аналитическая сводка. Полностью локально: Ollama + ClickHouse + Qdrant, два слоя RAG, Streamlit и Telegram.">
+<title>Retail AI Assistant — локальный AI-аналитик для ритейла</title>
+<meta name="description" content="Вопрос словами → корректный ClickHouse-SQL, график и сводка. Полностью локально: Ollama + ClickHouse + Qdrant, два слоя RAG, Streamlit и Telegram.">
+<script>try{if(localStorage.getItem('lang')==='en'){document.documentElement.classList.add('en');document.documentElement.lang='en';}}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bounded:wght@400;500;700;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --brand:#fa3b01; --brand-soft:#ff946a;
-  --green:#00dc82; --teal:#36e4da; --blue:#2f6bff; --violet:#a98bff;
+  --green:#00dc82; --teal:#36e4da; --blue:#2f6bff;
   --ink:#000000; --panel:#131010; --panel-2:#191411;
   --text:#efe7db; --muted:#a99f95; --line:#2a2420;
   --font-display:"Bounded","Inter",system-ui,sans-serif;
@@ -31,24 +32,31 @@ h1,h2,h3,.display{font-family:var(--font-display);font-weight:900;letter-spacing
 .accent{color:var(--brand)}
 code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 
+/* language toggle */
+.l-en{display:none}
+html.en .l-ru{display:none}
+html.en .l-en{display:inline}
+.langsw{display:inline-flex;border:1px solid var(--line);border-radius:30px;overflow:hidden}
+.langsw button{background:transparent;color:#cfc7bf;border:0;padding:7px 13px;font-family:var(--font-sans);font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s}
+.langsw button.on{background:var(--brand);color:#fff}
+.langsw button:not(.on):hover{color:#fff}
+
 .btn{display:inline-flex;align-items:center;gap:9px;font-weight:700;font-size:15px;padding:14px 26px;border-radius:40px;border:1.5px solid transparent;transition:.18s ease;cursor:pointer}
 .btn-primary{background:var(--brand);color:#fff}
 .btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px -10px var(--brand)}
 .btn-ghost{border-color:#4a423c;color:#fff}
 .btn-ghost:hover{background:#fff;color:#000;border-color:#fff}
 
-/* nav */
 .nav{position:sticky;top:0;z-index:50;background:rgba(10,8,7,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:70px}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:70px;gap:14px}
 .brand{display:flex;align-items:center;gap:11px;color:#fff;font-family:var(--font-display);font-weight:900;font-size:19px}
 .brand .dot{width:30px;height:30px;border-radius:9px;background:var(--brand);display:grid;place-items:center;color:#fff;font-size:15px}
-.nav-links{display:flex;gap:26px;align-items:center}
+.nav-links{display:flex;gap:24px;align-items:center}
 .nav-links a{color:#cfc7bf;font-size:14.5px;font-weight:500}
 .nav-links a:hover{color:#fff}
 .nav .btn{padding:10px 20px;font-size:14px}
-@media(max-width:900px){.nav-links a:not(.btn){display:none}}
+@media(max-width:960px){.nav-links a:not(.btn){display:none}}
 
-/* hero */
 .hero{background:radial-gradient(1200px 620px at 78% -12%, #26160f 0%, #000 56%);position:relative;overflow:hidden}
 .hero:after{content:"";position:absolute;inset:0;background:
   radial-gradient(520px 520px at 86% 16%, rgba(250,59,1,.20), transparent 60%),
@@ -56,7 +64,7 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 .hero .wrap{position:relative;z-index:2;padding-top:92px;padding-bottom:100px}
 .hero h1{font-size:clamp(38px,6.2vw,80px);max-width:16ch;color:#fff}
 .hero h1 .grad{background:linear-gradient(90deg,var(--brand),var(--brand-soft));-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero p.sub{margin:26px 0 34px;font-size:20px;color:#d8cfc7;max-width:60ch}
+.hero p.sub{margin:26px 0 34px;font-size:20px;color:#d8cfc7;max-width:62ch}
 .hero .cta{display:flex;gap:14px;flex-wrap:wrap}
 .tag-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px}
 .tag{border:1px solid var(--line);background:#ffffff08;color:#e7ded6;font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:30px}
@@ -65,16 +73,14 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;margin-top:66px;border-top:1px solid var(--line);padding-top:34px}
 .stat .n{font-family:var(--font-display);font-weight:900;font-size:clamp(28px,3.8vw,44px);line-height:1}
 .stat .n.c1{color:var(--brand)} .stat .n.c2{color:var(--green)} .stat .n.c3{color:var(--teal)} .stat .n.c4{color:#fff}
-.stat .l{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:22ch}
+.stat .l{color:var(--muted);font-size:13.5px;margin-top:9px;max-width:24ch}
 @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr);gap:24px}}
 
-/* sections */
 .section.alt{background:#0a0807;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .section h2{font-size:clamp(29px,4.1vw,49px);max-width:19ch;color:#fff}
 .section .lead{margin-top:16px}
 .head-row{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;margin-bottom:46px}
 
-/* cards */
 .grid{display:grid;gap:20px}
 .g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
 @media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
@@ -87,12 +93,10 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 .card .big{font-family:var(--font-display);font-weight:900;font-size:38px;line-height:1;margin-bottom:6px}
 .card b{color:#fff}
 .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 11px;border-radius:20px;background:#ffffff0e;color:var(--brand-soft);border:1px solid var(--line)}
-.ok{color:var(--green)} .bad{color:var(--brand)}
 
 .callout{border-left:3px solid var(--brand);background:#ffffff08;border-radius:0 14px 14px 0;padding:18px 22px;font-size:15.5px;color:#e7ded6}
 .callout b{color:#fff}
 
-/* pipeline flow */
 .flow{display:flex;flex-direction:column;gap:16px}
 .band{border:1px solid var(--line);border-radius:20px;padding:20px 20px 22px;background:var(--panel)}
 .band-l{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-soft);margin-bottom:15px}
@@ -107,11 +111,10 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 .arw{display:grid;place-items:center;color:var(--brand);font-size:20px;font-weight:700;flex:0 0 22px}
 .vlbl{text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:12px;margin:2px 0}
 @media(max-width:760px){.frow{flex-direction:column}.arw{transform:rotate(90deg)}}
-.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.legend{display:flex;gap:8px 18px;flex-wrap:wrap;margin-top:18px}
 .legend span{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);font-family:var(--font-mono)}
 .legend .d{width:9px;height:9px;border-radius:50%}
 
-/* assembled prompt */
 .prompt-wrap{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#0c0a09}
 .pw-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .pw-bar .dotr{width:11px;height:11px;border-radius:50%}
@@ -123,10 +126,9 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 .seg.few{background:#0c1424} .seg.few .sl{color:#7ea0ff} .seg.few .hl{color:#7ea0ff}
 .seg.few .dim{color:#5f5a52}
 .seg.q{background:#1a0f08} .seg.q .sl{color:var(--brand-soft)} .seg.q .hl{color:var(--brand-soft)}
-.out{padding:12px 16px;font-family:var(--font-mono);font-size:12.5px;color:var(--green);background:#0a1610}
+.out{padding:12px 16px;font-family:var(--font-mono);font-size:12.5px;color:var(--green);background:#0a1610;overflow-x:auto}
 .out .kw{color:var(--brand-soft)}
 
-/* table */
 .mtable{width:100%;border-collapse:collapse;font-size:15px}
 .mtable th{text-align:left;font-weight:700;color:var(--muted);border-bottom:2px solid var(--brand);padding:12px 14px;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase}
 .mtable td{padding:14px;border-bottom:1px solid var(--line)}
@@ -135,19 +137,15 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 .mtable .m{font-family:var(--font-display);font-weight:700}
 .mtable .sub{color:var(--muted);font-size:12.5px}
 
-/* stack */
 .stack{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
 .stack span{border:1px solid var(--line);color:#d8cfc7;padding:8px 15px;border-radius:30px;font-size:13.5px;font-weight:600}
 .stack b{color:var(--brand-soft)}
 
-/* footer */
 .foot{background:#080706;color:#cfc7bf;padding:56px 0 40px;border-top:1px solid var(--line)}
 .foot .wrap{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap}
-.foot .brand{color:#fff;margin-bottom:14px}
 .foot small{color:#6f665e;font-family:var(--font-mono)}
 .foot a:hover{color:var(--brand-soft)}
 
-/* reveal */
 .js .reveal{opacity:0;transform:translateY(20px);transition:.55s cubic-bezier(.2,.7,.2,1)}
 .js .reveal.in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}}
@@ -160,12 +158,12 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
   <div class="wrap">
     <a class="brand" href="#top"><span class="dot">◆</span> retail<span style="color:var(--brand)">_</span>ai</a>
     <div class="nav-links">
-      <a href="#problem">Задача</a>
-      <a href="#data">Данные</a>
-      <a href="#how">Как&nbsp;работает</a>
-      <a href="#prompt">Что&nbsp;видит&nbsp;LLM</a>
-      <a href="#metrics">Метрики</a>
-      <a class="btn btn-primary" href="#how">Разобрать пайплайн →</a>
+      <a href="#problem"><span class="l-ru">Задача</span><span class="l-en">Challenge</span></a>
+      <a href="#data"><span class="l-ru">Данные</span><span class="l-en">Data</span></a>
+      <a href="#how"><span class="l-ru">Как&nbsp;работает</span><span class="l-en">How&nbsp;it&nbsp;works</span></a>
+      <a href="#prompt"><span class="l-ru">Что&nbsp;видит&nbsp;LLM</span><span class="l-en">The&nbsp;prompt</span></a>
+      <a href="#metrics"><span class="l-ru">Метрики</span><span class="l-en">Metrics</span></a>
+      <span class="langsw"><button data-l="ru">RU</button><button data-l="en">EN</button></span>
     </div>
   </div>
 </nav>
@@ -174,24 +172,32 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 <header class="hero" id="top">
   <div class="wrap">
     <div class="tag-row reveal">
-      <span class="tag">💎 Ювелирный ритейл</span>
-      <span class="tag">Text-to-SQL + <b>два слоя RAG</b></span>
-      <span class="tag">Локально: <b>Ollama · ClickHouse · Qdrant</b></span>
+      <span class="tag"><span class="l-ru">💎 Ювелирный ритейл</span><span class="l-en">💎 Jewelry retail</span></span>
+      <span class="tag">Text-to-SQL + <b><span class="l-ru">два слоя RAG</span><span class="l-en">two-layer RAG</span></b></span>
+      <span class="tag"><span class="l-ru">Локально:</span><span class="l-en">Local:</span> <b>Ollama · ClickHouse · Qdrant</b></span>
       <span class="tag">Streamlit + Telegram</span>
     </div>
-    <h1 class="reveal">Спрашивай данные словами —<br>получай <span class="grad">SQL, график и вывод</span></h1>
-    <p class="sub reveal">Локальный AI-аналитик для розничной сети. Вопрос на русском превращается
-      в корректный ClickHouse-SQL, аналитическую сводку и график или Excel. Всё on-premise —
-      данные не покидают контур; внешняя модель подключается опционально, с автофолбэком на локальную.</p>
+    <h1 class="reveal">
+      <span class="l-ru">Спрашивай данные словами —<br>получай <span class="grad">SQL, график и вывод</span></span>
+      <span class="l-en">Ask your data in plain words —<br>get <span class="grad">SQL, a chart, the answer</span></span>
+    </h1>
+    <p class="sub reveal">
+      <span class="l-ru">Локальный AI-аналитик для розничной сети. Вопрос превращается
+        в корректный ClickHouse-SQL, аналитическую сводку и график или Excel. Всё on-premise —
+        данные не покидают контур; внешняя модель подключается опционально, с автофолбэком на локальную.</span>
+      <span class="l-en">A local AI analyst for a retail chain. A question turns into valid ClickHouse SQL,
+        a written summary, and a chart or Excel file. Everything runs on-premise — the data never
+        leaves the building; an external model is optional, with automatic fallback to the local one.</span>
+    </p>
     <div class="cta reveal">
-      <a class="btn btn-primary" href="#how">Смотреть пайплайн</a>
-      <a class="btn btn-ghost" href="#metrics">Метрики качества</a>
+      <a class="btn btn-primary" href="#how"><span class="l-ru">Смотреть пайплайн</span><span class="l-en">See the pipeline</span></a>
+      <a class="btn btn-ghost" href="#metrics"><span class="l-ru">Метрики качества</span><span class="l-en">Quality metrics</span></a>
     </div>
     <div class="stats">
-      <div class="stat reveal"><div class="n c1">~1M</div><div class="l">строк продаж в ClickHouse, 3 года истории</div></div>
-      <div class="stat reveal"><div class="n c2">97→100%</div><div class="l">execution accuracy: локальная 14B → внешняя 70B</div></div>
-      <div class="stat reveal"><div class="n c3">2 слоя</div><div class="l">RAG: схемы таблиц + few-shot, LaBSE 768d</div></div>
-      <div class="stat reveal"><div class="n c4">0</div><div class="l">внешних API по умолчанию — air-gapped</div></div>
+      <div class="stat reveal"><div class="n c1">~1M</div><div class="l"><span class="l-ru">строк продаж в ClickHouse, 3 года истории</span><span class="l-en">rows of sales in ClickHouse, 3 years of history</span></div></div>
+      <div class="stat reveal"><div class="n c2">97→100%</div><div class="l"><span class="l-ru">execution accuracy: локальная 14B → внешняя 70B</span><span class="l-en">execution accuracy: local 14B → external 70B</span></div></div>
+      <div class="stat reveal"><div class="n c3"><span class="l-ru">2 слоя</span><span class="l-en">2 layers</span></div><div class="l"><span class="l-ru">RAG: схемы таблиц + few-shot, LaBSE 768d</span><span class="l-en">RAG: table schemas + few-shot, LaBSE 768d</span></div></div>
+      <div class="stat reveal"><div class="n c4">0</div><div class="l"><span class="l-ru">внешних API по умолчанию — air-gapped</span><span class="l-en">external APIs by default — air-gapped</span></div></div>
     </div>
   </div>
 </header>
@@ -201,19 +207,27 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
   <div class="wrap">
     <div class="head-row">
       <div>
-        <div class="eyebrow reveal">Задача</div>
-        <h2 class="reveal">Данные есть —<br>доступа к ним нет</h2>
+        <div class="eyebrow reveal"><span class="l-ru">Задача</span><span class="l-en">Challenge</span></div>
+        <h2 class="reveal"><span class="l-ru">Данные есть —<br>доступа к ним нет</span><span class="l-en">The data is there —<br>the access isn't</span></h2>
       </div>
-      <p class="lead reveal">В сети терабайты продаж, но чтобы ответить на простой вопрос, нужен аналитик,
-        который напишет SQL. Ассистент убирает этого посредника — безопасно и локально.</p>
+      <p class="lead reveal"><span class="l-ru">В сети терабайты продаж, но чтобы ответить на простой вопрос, нужен аналитик,
+        который напишет SQL. Ассистент убирает этого посредника — безопасно и локально.</span>
+        <span class="l-en">The chain has terabytes of sales, but answering a simple question needs an analyst
+        to write SQL. The assistant removes that middleman — safely and locally.</span></p>
     </div>
     <div class="grid g3">
-      <div class="card reveal"><div class="big accent">1</div><h3>Аналитик — бутылочное горлышко</h3>
-        <p>Каждый вопрос «сколько, где, кто лучше» идёт через человека с SQL. Очередь растёт, решения ждут.</p></div>
-      <div class="card reveal"><div class="big" style="color:var(--blue)">SQL</div><h3>Барьер для сотрудника</h3>
-        <p>Директор магазина не пишет ClickHouse-запросы с оконными функциями и план-vs-факт. Ему нужен ответ.</p></div>
-      <div class="card reveal"><div class="big" style="color:var(--green)">on-prem</div><h3>Данные не должны утекать</h3>
-        <p>Облачный LLM = комплаенс-риск. Здесь модель, база и поиск живут внутри контура; внешняя — по желанию.</p></div>
+      <div class="card reveal"><div class="big accent">1</div>
+        <h3><span class="l-ru">Аналитик — бутылочное горлышко</span><span class="l-en">The analyst is a bottleneck</span></h3>
+        <p><span class="l-ru">Каждый вопрос «сколько, где, кто лучше» идёт через человека с SQL. Очередь растёт, решения ждут.</span>
+        <span class="l-en">Every "how much, where, who's best" runs through a person writing SQL. The queue grows, decisions wait.</span></p></div>
+      <div class="card reveal"><div class="big" style="color:var(--blue)">SQL</div>
+        <h3><span class="l-ru">Барьер для сотрудника</span><span class="l-en">A barrier for staff</span></h3>
+        <p><span class="l-ru">Директор магазина не пишет ClickHouse-запросы с оконными функциями и план-vs-факт. Ему нужен ответ.</span>
+        <span class="l-en">A store manager doesn't write ClickHouse queries with window functions and plan-vs-actual. They just need an answer.</span></p></div>
+      <div class="card reveal"><div class="big" style="color:var(--green)">on-prem</div>
+        <h3><span class="l-ru">Данные не должны утекать</span><span class="l-en">Data must not leak</span></h3>
+        <p><span class="l-ru">Облачный LLM = комплаенс-риск. Здесь модель, база и поиск живут внутри контура; внешняя — по желанию.</span>
+        <span class="l-en">A cloud LLM is a compliance risk. Here the model, database, and search live inside the perimeter; external is opt-in.</span></p></div>
     </div>
   </div>
 </section>
@@ -223,26 +237,34 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
   <div class="wrap">
     <div class="head-row">
       <div>
-        <div class="eyebrow reveal">Данные</div>
-        <h2 class="reveal">retail_demo:<br>шесть таблиц, живая сезонность</h2>
+        <div class="eyebrow reveal"><span class="l-ru">Данные</span><span class="l-en">Data</span></div>
+        <h2 class="reveal"><span class="l-ru">retail_demo:<br>шесть таблиц, живая сезонность</span><span class="l-en">retail_demo:<br>six tables, real seasonality</span></h2>
       </div>
-      <p class="lead reveal">Синтетическая ювелирная сеть с реалистичными паттернами — пики декабря и
-        февраля-марта, лидеры и аутсайдеры, честный план-vs-факт. Детерминированный генератор, seed=42.</p>
+      <p class="lead reveal"><span class="l-ru">Синтетическая ювелирная сеть с реалистичными паттернами — пики декабря и
+        февраля-марта, лидеры и аутсайдеры, честный план-vs-факт. Детерминированный генератор, seed=42.</span>
+        <span class="l-en">A synthetic jewelry chain with realistic patterns — December and Feb–March peaks,
+        leaders and laggards, honest plan-vs-actual. A deterministic generator, seed=42.</span></p>
     </div>
     <div class="grid g3">
-      <div class="card reveal"><span class="pill">directory</span><h3 style="margin-top:14px">🏪 Магазины · <b>~50</b></h3>
-        <p>Города, федеральные округа, форматы street / mall / outlet. 3 лидера, 3 аутсайдера.</p></div>
-      <div class="card reveal"><span class="pill">directory</span><h3 style="margin-top:14px">👤 Сотрудники · <b>~500</b></h3>
-        <p>Продавцы привязаны к магазину, офис — NULL. Разный «скилл» → разная выручка.</p></div>
-      <div class="card reveal"><span class="pill">directory</span><h3 style="margin-top:14px">💍 Товары · <b>~2 000</b></h3>
-        <p>Категории, металл (золото 585 / серебро 925 / платина), цена, себестоимость.</p></div>
-      <div class="card reveal"><span class="pill">fact</span><h3 style="margin-top:14px">🧾 Продажи · <b>~1M</b></h3>
-        <p>2024–2026, точное время, скидки. Сезонность и выходные зашиты в генератор.</p></div>
-      <div class="card reveal"><span class="pill">fact</span><h3 style="margin-top:14px">🎯 Планы · <b>1 800</b></h3>
-        <p>План выручки на магазин×месяц. 20 магазинов не выполняют, 30 перевыполняют — реальный микс.</p></div>
-      <div class="card reveal" style="border-color:#155f3c"><div class="kicker" style="color:var(--green)">инвариант в БД</div>
-        <h3 style="margin-top:2px">Будущее скрыто</h3>
-        <p>Данные идут до конца 2026, но <code>row policy: sale_date ≤ today()</code> прячет будущее от любого SQL.</p></div>
+      <div class="card reveal"><span class="pill">directory</span><h3 style="margin-top:14px">🏪 <span class="l-ru">Магазины</span><span class="l-en">Stores</span> · <b>~50</b></h3>
+        <p><span class="l-ru">Города, федеральные округа, форматы street / mall / outlet. 3 лидера, 3 аутсайдера.</span>
+        <span class="l-en">Cities, regions, formats street / mall / outlet. 3 leaders, 3 laggards.</span></p></div>
+      <div class="card reveal"><span class="pill">directory</span><h3 style="margin-top:14px">👤 <span class="l-ru">Сотрудники</span><span class="l-en">Employees</span> · <b>~500</b></h3>
+        <p><span class="l-ru">Продавцы привязаны к магазину, офис — NULL. Разный «скилл» → разная выручка.</span>
+        <span class="l-en">Salespeople tied to a store, office = NULL. Different "skill" → different revenue.</span></p></div>
+      <div class="card reveal"><span class="pill">directory</span><h3 style="margin-top:14px">💍 <span class="l-ru">Товары</span><span class="l-en">Products</span> · <b>~2 000</b></h3>
+        <p><span class="l-ru">Категории, металл (золото 585 / серебро 925 / платина), цена, себестоимость.</span>
+        <span class="l-en">Categories, metal (585 gold / 925 silver / platinum), price, cost.</span></p></div>
+      <div class="card reveal"><span class="pill">fact</span><h3 style="margin-top:14px">🧾 <span class="l-ru">Продажи</span><span class="l-en">Sales</span> · <b>~1M</b></h3>
+        <p><span class="l-ru">2024–2026, точное время, скидки. Сезонность и выходные зашиты в генератор.</span>
+        <span class="l-en">2024–2026, exact timestamps, discounts. Seasonality and weekends baked into the generator.</span></p></div>
+      <div class="card reveal"><span class="pill">fact</span><h3 style="margin-top:14px">🎯 <span class="l-ru">Планы</span><span class="l-en">Plans</span> · <b>1 800</b></h3>
+        <p><span class="l-ru">План выручки на магазин×месяц. 20 магазинов не выполняют, 30 перевыполняют — реальный микс.</span>
+        <span class="l-en">Revenue target per store×month. 20 stores miss, 30 beat — a real mix.</span></p></div>
+      <div class="card reveal" style="border-color:#155f3c"><div class="kicker" style="color:var(--green)"><span class="l-ru">инвариант в БД</span><span class="l-en">invariant in the DB</span></div>
+        <h3 style="margin-top:2px"><span class="l-ru">Будущее скрыто</span><span class="l-en">The future is hidden</span></h3>
+        <p><span class="l-ru">Данные идут до конца 2026, но <code>row policy: sale_date ≤ today()</code> прячет будущее от любого SQL.</span>
+        <span class="l-en">Data runs to the end of 2026, but <code>row policy: sale_date ≤ today()</code> hides the future from any SQL.</span></p></div>
     </div>
   </div>
 </section>
@@ -251,55 +273,57 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 <section class="section" id="how">
   <div class="wrap">
     <div class="head-row">
-      <div><div class="eyebrow reveal">Как работает</div>
-        <h2 class="reveal">Один вопрос →<br>структурированный ответ</h2></div>
-      <p class="lead reveal">Ядро <code>core.ask(question)</code> проводит вопрос через 10 шагов и возвращает
-        единый <code>AssistantResponse</code>. Интерфейсы — тонкие обёртки над ним.</p>
+      <div><div class="eyebrow reveal"><span class="l-ru">Как работает</span><span class="l-en">How it works</span></div>
+        <h2 class="reveal"><span class="l-ru">Один вопрос →<br>структурированный ответ</span><span class="l-en">One question →<br>a structured answer</span></h2></div>
+      <p class="lead reveal"><span class="l-ru">Ядро <code>core.ask(question)</code> проводит вопрос через 10 шагов и возвращает
+        единый <code>AssistantResponse</code>. Интерфейсы — тонкие обёртки над ним.</span>
+        <span class="l-en">The core <code>core.ask(question)</code> runs the question through 10 steps and returns
+        a single <code>AssistantResponse</code>. The interfaces are thin wrappers over it.</span></p>
     </div>
 
     <div class="flow reveal">
       <div class="band">
-        <div class="band-l">Понимание запроса</div>
+        <div class="band-l"><span class="l-ru">Понимание запроса</span><span class="l-en">Understanding the question</span></div>
         <div class="frow">
-          <div class="node"><div class="t">Вопрос</div><div class="s">«график выручки по месяцам за 2025»</div></div>
+          <div class="node"><div class="t"><span class="l-ru">Вопрос</span><span class="l-en">Question</span></div><div class="s"><span class="l-ru">«график выручки по месяцам за 2025»</span><span class="l-en">"revenue by month for 2025"</span></div></div>
           <div class="arw">→</div>
-          <div class="node llm"><div class="t">0 · Condense</div><div class="s">follow-up → самодостаточный вопрос</div></div>
+          <div class="node llm"><div class="t">0 · Condense</div><div class="s"><span class="l-ru">follow-up → самодостаточный вопрос</span><span class="l-en">follow-up → self-contained question</span></div></div>
           <div class="arw">→</div>
-          <div class="node llm"><div class="t">1 · Интент</div><div class="s">sql / chart / excel / chitchat</div></div>
+          <div class="node llm"><div class="t">1 · <span class="l-ru">Интент</span><span class="l-en">Intent</span></div><div class="s">sql / chart / excel / chitchat</div></div>
         </div>
       </div>
 
-      <div class="vlbl">▼ вопрос → вектор LaBSE (768d) · один вектор в два индекса Qdrant</div>
+      <div class="vlbl"><span class="l-ru">▼ вопрос → вектор LaBSE (768d) · один вектор в два индекса Qdrant</span><span class="l-en">▼ question → LaBSE vector (768d) · one vector into two Qdrant indexes</span></div>
 
       <div class="band">
-        <div class="band-l">Ветвление: два слоя RAG</div>
+        <div class="band-l"><span class="l-ru">Ветвление: два слоя RAG</span><span class="l-en">Branch: two RAG layers</span></div>
         <div class="frow">
-          <div class="node vec"><div class="t">2a · Schema RAG</div><div class="s">top-3 таблицы (откуда брать)</div></div>
-          <div class="node vec"><div class="t">2b · Few-shot RAG</div><div class="s">top-3 примера «вопрос→SQL» (как писать)</div></div>
+          <div class="node vec"><div class="t">2a · Schema RAG</div><div class="s"><span class="l-ru">top-3 таблицы (откуда брать)</span><span class="l-en">top-3 tables (where to look)</span></div></div>
+          <div class="node vec"><div class="t">2b · Few-shot RAG</div><div class="s"><span class="l-ru">top-3 примера «вопрос→SQL» (как писать)</span><span class="l-en">top-3 "question→SQL" examples (how to write)</span></div></div>
           <div class="arw">→</div>
-          <div class="node code"><div class="t">3 · Сборка промпта</div><div class="s">system + схемы + примеры + вопрос</div></div>
+          <div class="node code"><div class="t">3 · <span class="l-ru">Сборка промпта</span><span class="l-en">Assemble prompt</span></div><div class="s"><span class="l-ru">system + схемы + примеры + вопрос</span><span class="l-en">system + schemas + examples + question</span></div></div>
         </div>
       </div>
 
       <div class="band">
-        <div class="band-l">Генерация и защита</div>
+        <div class="band-l"><span class="l-ru">Генерация и защита</span><span class="l-en">Generation & guards</span></div>
         <div class="frow">
           <div class="node llm"><div class="t">4 · LLM → SQL</div><div class="s">Ollama / Groq · t=0.1</div></div>
           <div class="arw">→</div>
-          <div class="node code"><div class="t">5 · Валидатор</div><div class="s">только SELECT · форс LIMIT</div></div>
+          <div class="node code"><div class="t">5 · <span class="l-ru">Валидатор</span><span class="l-en">Validator</span></div><div class="s"><span class="l-ru">только SELECT · форс LIMIT</span><span class="l-en">SELECT only · forced LIMIT</span></div></div>
           <div class="arw">→</div>
-          <div class="node db"><div class="t">6 · ClickHouse</div><div class="s">исполнение · row policy · ↺ retry ≤3</div></div>
+          <div class="node db"><div class="t">6 · ClickHouse</div><div class="s"><span class="l-ru">исполнение · row policy · ↺ retry ≤3</span><span class="l-en">execute · row policy · ↺ retry ≤3</span></div></div>
         </div>
       </div>
 
       <div class="band">
-        <div class="band-l">Ответ</div>
+        <div class="band-l"><span class="l-ru">Ответ</span><span class="l-en">Answer</span></div>
         <div class="frow">
-          <div class="node code"><div class="t">7 · Факты</div><div class="s">max/min/сумма — считает код, не LLM</div></div>
+          <div class="node code"><div class="t">7 · <span class="l-ru">Факты</span><span class="l-en">Facts</span></div><div class="s"><span class="l-ru">max/min/сумма — считает код, не LLM</span><span class="l-en">max/min/sum — computed by code, not the LLM</span></div></div>
           <div class="arw">→</div>
-          <div class="node llm"><div class="t">8 · Сводка</div><div class="s">2–4 предложения по-русски</div></div>
+          <div class="node llm"><div class="t">8 · <span class="l-ru">Сводка</span><span class="l-en">Summary</span></div><div class="s"><span class="l-ru">2–4 предложения</span><span class="l-en">2–4 sentences</span></div></div>
           <div class="arw">→</div>
-          <div class="node code"><div class="t">9 · Артефакт</div><div class="s">PNG-график / Excel</div></div>
+          <div class="node code"><div class="t">9 · <span class="l-ru">Артефакт</span><span class="l-en">Artifact</span></div><div class="s"><span class="l-ru">PNG-график / Excel</span><span class="l-en">PNG chart / Excel</span></div></div>
           <div class="arw">→</div>
           <div class="node"><div class="t">AssistantResponse</div><div class="s">text · sql · table · chart · excel</div></div>
         </div>
@@ -307,14 +331,16 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
     </div>
 
     <div class="legend reveal">
-      <span><i class="d" style="background:var(--brand-soft)"></i>LLM — вероятностный</span>
-      <span><i class="d" style="background:var(--teal)"></i>Qdrant — вектор-поиск</span>
-      <span><i class="d" style="background:#7ea0ff"></i>ClickHouse — данные</span>
-      <span><i class="d" style="background:var(--green)"></i>детерминированный код</span>
+      <span><i class="d" style="background:var(--brand-soft)"></i><span class="l-ru">LLM — вероятностный</span><span class="l-en">LLM — probabilistic</span></span>
+      <span><i class="d" style="background:var(--teal)"></i><span class="l-ru">Qdrant — вектор-поиск</span><span class="l-en">Qdrant — vector search</span></span>
+      <span><i class="d" style="background:#7ea0ff"></i><span class="l-ru">ClickHouse — данные</span><span class="l-en">ClickHouse — data</span></span>
+      <span><i class="d" style="background:var(--green)"></i><span class="l-ru">детерминированный код</span><span class="l-en">deterministic code</span></span>
     </div>
     <div class="callout reveal" style="margin-top:22px">
-      <b>Ключевой приём:</b> каждый шаг LLM обёрнут детерминированным кодом — валидатор перед базой,
-      «проверенные факты» перед сводкой. Инварианты живут в коде и в БД, а не в промпте.
+      <span class="l-ru"><b>Ключевой приём:</b> каждый шаг LLM обёрнут детерминированным кодом — валидатор перед базой,
+      «проверенные факты» перед сводкой. Инварианты живут в коде и в БД, а не в промпте.</span>
+      <span class="l-en"><b>The key move:</b> every LLM step is wrapped in deterministic code — a validator before the database,
+      "verified facts" before the summary. Invariants live in code and in the DB, not in the prompt.</span>
     </div>
   </div>
 </section>
@@ -323,10 +349,12 @@ code{font-family:var(--font-mono);font-size:.92em;color:var(--brand-soft)}
 <section class="section alt" id="prompt">
   <div class="wrap">
     <div class="head-row">
-      <div><div class="eyebrow reveal">Что конкретно уходит в LLM</div>
-        <h2 class="reveal">Собранный промпт,<br>без магии</h2></div>
-      <p class="lead reveal">После поиска top-3 таблиц (2a) и top-3 примеров (2b) они дословно встраиваются
-        в запрос к модели. Ниже — реальные два сообщения для вопроса из hero.</p>
+      <div><div class="eyebrow reveal"><span class="l-ru">Что конкретно уходит в LLM</span><span class="l-en">What actually goes to the LLM</span></div>
+        <h2 class="reveal"><span class="l-ru">Собранный промпт,<br>без магии</span><span class="l-en">The assembled prompt,<br>no magic</span></h2></div>
+      <p class="lead reveal"><span class="l-ru">После поиска top-3 таблиц (2a) и top-3 примеров (2b) они дословно встраиваются
+        в запрос к модели. Ниже — реальные два сообщения для вопроса из hero.</span>
+        <span class="l-en">After retrieving the top-3 tables (2a) and top-3 examples (2b), they're inserted verbatim
+        into the model request. Below are the real two messages for the hero question.</span></p>
     </div>
     <div class="prompt-wrap reveal">
       <div class="pw-bar"><span class="dotr" style="background:var(--brand)"></span><span class="dotr" style="background:#f5b301"></span><span class="dotr" style="background:var(--green)"></span>&nbsp; chat.completions · model=qwen2.5-coder:14b · temperature=0.1</div>
@@ -340,11 +368,11 @@ Current date: 2026-07-12.
 - plan-vs-actual: aggregate plans & sales in SEPARATE subqueries (fan-out).
 - KPI: ATV=revenue/transactions · UPT=units/transactions · ASP=revenue/units.
 - «Топ N» без метрики = ORDER BY revenue DESC. Время: «прошлый месяц» = календарь.
-- Always LIMIT (<= 1000).   … (полные правила — в файле)</pre>
+- Always LIMIT (<= 1000).   ... (full rules in the file)</pre>
       </div>
 
       <div class="seg sch">
-        <div class="sl"><span>user · часть 1</span><span class="hl">← вставлено из 2a Schema RAG</span></div>
+        <div class="sl"><span>user · <span class="l-ru">часть 1</span><span class="l-en">part 1</span></span><span class="hl"><span class="l-ru">← вставлено из 2a Schema RAG</span><span class="l-en">← inserted from 2a Schema RAG</span></span></div>
 <pre>SCHEMA (most relevant tables):
 Таблица: sales — Факт продаж (~1 млн строк). Выручка = quantity*price*(1-discount_pct/100).
   sale_date (Date) · store_id · employee_id · product_id · quantity · price · discount_pct
@@ -353,16 +381,16 @@ Current date: 2026-07-12.
       </div>
 
       <div class="seg few">
-        <div class="sl"><span>user · часть 2</span><span class="hl">← вставлено из 2b Few-shot RAG</span></div>
+        <div class="sl"><span>user · <span class="l-ru">часть 2</span><span class="l-en">part 2</span></span><span class="hl"><span class="l-ru">← вставлено из 2b Few-shot RAG</span><span class="l-en">← inserted from 2b Few-shot RAG</span></span></div>
 <pre><span class="hl">Вопрос:</span> Покажи выручку по месяцам за 2025 год.
 <span class="dim">SQL: SELECT toStartOfMonth(sale_date) AS month, round(sum(...)) AS revenue
      FROM sales WHERE toYear(sale_date)=2025 GROUP BY month ORDER BY month</span>
-<span class="hl">Вопрос:</span> Общий отчёт по месяцам за 2025 год.   <span class="dim">SQL: … + ATV/UPT/ASP …</span>
-<span class="hl">Вопрос:</span> Прирост выручки месяц к месяцу.      <span class="dim">SQL: … lagInFrame() OVER … </span></pre>
+<span class="hl">Вопрос:</span> Общий отчёт по месяцам за 2025 год.   <span class="dim">SQL: ... + ATV/UPT/ASP ...</span>
+<span class="hl">Вопрос:</span> Прирост выручки месяц к месяцу.      <span class="dim">SQL: ... lagInFrame() OVER ... </span></pre>
       </div>
 
       <div class="seg q">
-        <div class="sl"><span>user · часть 3</span><span class="hl">← вопрос пользователя</span></div>
+        <div class="sl"><span>user · <span class="l-ru">часть 3</span><span class="l-en">part 3</span></span><span class="hl"><span class="l-ru">← вопрос пользователя</span><span class="l-en">← the user's question</span></span></div>
 <pre>QUESTION: Покажи график выручки по месяцам за 2025 год
 SQL:</pre>
       </div>
@@ -370,8 +398,10 @@ SQL:</pre>
       <div class="out">↳ <span class="kw">SELECT</span> toYYYYMM(sale_date) <span class="kw">AS</span> month, round(sum(quantity*price*(1-discount_pct/100))) <span class="kw">AS</span> revenue <span class="kw">FROM</span> sales <span class="kw">WHERE</span> toYear(sale_date)=2025 <span class="kw">GROUP BY</span> month <span class="kw">ORDER BY</span> month</div>
     </div>
     <div class="callout reveal" style="margin-top:22px">
-      В коллекции <b>retail_schema</b> в вектор идёт весь «паспорт таблицы»; в <b>retail_few_shot</b> —
-      <b>только текст вопроса</b>, а эталонный SQL лежит в payload и достаётся уже после совпадения.
+      <span class="l-ru">В коллекции <b>retail_schema</b> в вектор идёт весь «паспорт таблицы»; в <b>retail_few_shot</b> —
+      <b>только текст вопроса</b>, а эталонный SQL лежит в payload и достаётся уже после совпадения.</span>
+      <span class="l-en">In the <b>retail_schema</b> collection the whole "table passport" goes into the vector; in <b>retail_few_shot</b> —
+      <b>only the question text</b>, while the reference SQL sits in the payload and is fetched after the match.</span>
     </div>
   </div>
 </section>
@@ -380,26 +410,31 @@ SQL:</pre>
 <section class="section" id="metrics">
   <div class="wrap">
     <div class="head-row">
-      <div><div class="eyebrow reveal">Оценка</div><h2 class="reveal">30 вопросов,<br>честная метрика</h2></div>
-      <p class="lead reveal">Формулировки отличаются от few-shot — меряем генерализацию. Результат сверяется
-        по <b>денотации</b> (множество строк, инвариантно к порядку), а не по тексту SQL.</p>
+      <div><div class="eyebrow reveal"><span class="l-ru">Оценка</span><span class="l-en">Evaluation</span></div><h2 class="reveal"><span class="l-ru">30 вопросов,<br>честная метрика</span><span class="l-en">30 questions,<br>an honest metric</span></h2></div>
+      <p class="lead reveal"><span class="l-ru">Формулировки отличаются от few-shot — меряем генерализацию. Результат сверяется
+        по <b>денотации</b> (множество строк, инвариантно к порядку), а не по тексту SQL.</span>
+        <span class="l-en">The wordings differ from the few-shot set — we measure generalization. Results are compared
+        by <b>denotation</b> (the set of rows, order-invariant), not by SQL text.</span></p>
     </div>
     <div class="card reveal" style="padding:8px 6px">
       <table class="mtable">
-        <thead><tr><th>Backend</th><th>Модель</th><th>Execution</th><th>Result</th><th>Попыток</th></tr></thead>
+        <thead><tr><th>Backend</th><th><span class="l-ru">Модель</span><span class="l-en">Model</span></th><th>Execution</th><th>Result</th><th><span class="l-ru">Попыток</span><span class="l-en">Attempts</span></th></tr></thead>
         <tbody>
-          <tr><td>local <span class="sub">· по умолчанию</span></td><td>qwen2.5-coder:14b <span class="sub">(Ollama)</span></td><td class="m">97%</td><td class="m">70%</td><td class="m">1.10</td></tr>
+          <tr><td>local <span class="sub">· <span class="l-ru">по умолчанию</span><span class="l-en">default</span></span></td><td>qwen2.5-coder:14b <span class="sub">(Ollama)</span></td><td class="m">97%</td><td class="m">70%</td><td class="m">1.10</td></tr>
           <tr class="win"><td>external 🏆</td><td>llama-3.3-70b <span class="sub">(Groq)</span></td><td class="m">100%</td><td class="m">77%</td><td class="m">1.00</td></tr>
         </tbody>
       </table>
     </div>
     <div class="grid g3" style="margin-top:22px">
-      <div class="card reveal"><div class="kicker">Execution vs Result</div><h3>Две метрики</h3>
-        <p><b>Execution</b> — SQL исполнился. <b>Result</b> — результат совпал с эталоном. Строгая: лишняя колонка = провал.</p></div>
-      <div class="card reveal"><div class="kicker" style="color:var(--blue)">Retry работает</div><h3>≤3 попытки</h3>
-        <p>Ошибка ClickHouse уходит обратно в модель текстом. Внешней 70B ретраи не нужны — 1.00 попытки.</p></div>
-      <div class="card reveal"><div class="kicker" style="color:var(--green)">Автофолбэк</div><h3>auto = Groq → local</h3>
-        <p>В проде: сначала внешняя, при лимите/сбое — мгновенно локальная. Проверено на живом 429 от Groq.</p></div>
+      <div class="card reveal"><div class="kicker">Execution vs Result</div><h3><span class="l-ru">Две метрики</span><span class="l-en">Two metrics</span></h3>
+        <p><span class="l-ru"><b>Execution</b> — SQL исполнился. <b>Result</b> — результат совпал с эталоном. Строгая: лишняя колонка = провал.</span>
+        <span class="l-en"><b>Execution</b> — the SQL ran. <b>Result</b> — the output matched the reference. Strict: an extra column = a miss.</span></p></div>
+      <div class="card reveal"><div class="kicker" style="color:var(--blue)"><span class="l-ru">Retry работает</span><span class="l-en">Retry works</span></div><h3><span class="l-ru">≤3 попытки</span><span class="l-en">≤3 attempts</span></h3>
+        <p><span class="l-ru">Ошибка ClickHouse уходит обратно в модель текстом. Внешней 70B ретраи не нужны — 1.00 попытки.</span>
+        <span class="l-en">A ClickHouse error goes back to the model as text. The external 70B needs no retries — 1.00 attempts.</span></p></div>
+      <div class="card reveal"><div class="kicker" style="color:var(--green)"><span class="l-ru">Автофолбэк</span><span class="l-en">Auto-fallback</span></div><h3>auto = Groq → local</h3>
+        <p><span class="l-ru">В проде: сначала внешняя, при лимите/сбое — мгновенно локальная. Проверено на живом 429 от Groq.</span>
+        <span class="l-en">In prod: external first, and on a rate limit or failure — instantly local. Verified against a live 429 from Groq.</span></p></div>
     </div>
   </div>
 </section>
@@ -408,19 +443,25 @@ SQL:</pre>
 <section class="section alt" id="stack">
   <div class="wrap">
     <div class="head-row">
-      <div><div class="eyebrow reveal">Инженерия</div><h2 class="reveal">Принципы и стек</h2></div>
-      <p class="lead reveal">Без LangChain — весь конвейер написан явно: маршрутизация, RAG, валидация,
-        ретраи, оценка. Понимание механики важнее вызова фреймворка.</p>
+      <div><div class="eyebrow reveal"><span class="l-ru">Инженерия</span><span class="l-en">Engineering</span></div><h2 class="reveal"><span class="l-ru">Принципы и стек</span><span class="l-en">Principles &amp; stack</span></h2></div>
+      <p class="lead reveal"><span class="l-ru">Без LangChain — весь конвейер написан явно: маршрутизация, RAG, валидация,
+        ретраи, оценка. Понимание механики важнее вызова фреймворка.</span>
+        <span class="l-en">No LangChain — the whole pipeline is written explicitly: routing, RAG, validation,
+        retries, evaluation. Understanding the mechanics beats calling a framework.</span></p>
     </div>
     <div class="grid g4">
-      <div class="card reveal"><div class="kicker">Принцип 01</div><h3>Инварианты — в коде</h3>
-        <p>Валидатор, row policy, проверенные факты. Что обязано быть верным — вынесено из LLM.</p></div>
-      <div class="card reveal"><div class="kicker" style="color:var(--teal)">Принцип 02</div><h3>LLM в сэндвиче</h3>
-        <p>Каждый вероятностный шаг обёрнут детерминированными проверками до и после.</p></div>
-      <div class="card reveal"><div class="kicker" style="color:#7ea0ff">Принцип 03</div><h3>Ядро без интерфейсов</h3>
-        <p>Один <code>core.ask()</code> с файлами-артефактами. Streamlit и Telegram — тонкие обёртки.</p></div>
-      <div class="card reveal"><div class="kicker" style="color:var(--green)">Принцип 04</div><h3>Диалог с памятью</h3>
-        <p>Общая история в ClickHouse: follow-up'ы, единый чат Streamlit ↔ Telegram.</p></div>
+      <div class="card reveal"><div class="kicker"><span class="l-ru">Принцип 01</span><span class="l-en">Principle 01</span></div><h3><span class="l-ru">Инварианты — в коде</span><span class="l-en">Invariants in code</span></h3>
+        <p><span class="l-ru">Валидатор, row policy, проверенные факты. Что обязано быть верным — вынесено из LLM.</span>
+        <span class="l-en">Validator, row policy, verified facts. Whatever must be true is taken out of the LLM.</span></p></div>
+      <div class="card reveal"><div class="kicker" style="color:var(--teal)"><span class="l-ru">Принцип 02</span><span class="l-en">Principle 02</span></div><h3><span class="l-ru">LLM в сэндвиче</span><span class="l-en">LLM in a sandwich</span></h3>
+        <p><span class="l-ru">Каждый вероятностный шаг обёрнут детерминированными проверками до и после.</span>
+        <span class="l-en">Every probabilistic step is wrapped in deterministic checks before and after.</span></p></div>
+      <div class="card reveal"><div class="kicker" style="color:#7ea0ff"><span class="l-ru">Принцип 03</span><span class="l-en">Principle 03</span></div><h3><span class="l-ru">Ядро без интерфейсов</span><span class="l-en">Core without interfaces</span></h3>
+        <p><span class="l-ru">Один <code>core.ask()</code> с файлами-артефактами. Streamlit и Telegram — тонкие обёртки.</span>
+        <span class="l-en">One <code>core.ask()</code> with file artifacts. Streamlit and Telegram are thin wrappers.</span></p></div>
+      <div class="card reveal"><div class="kicker" style="color:var(--green)"><span class="l-ru">Принцип 04</span><span class="l-en">Principle 04</span></div><h3><span class="l-ru">Диалог с памятью</span><span class="l-en">A dialog with memory</span></h3>
+        <p><span class="l-ru">Общая история в ClickHouse: follow-up'ы, единый чат Streamlit ↔ Telegram.</span>
+        <span class="l-en">Shared history in ClickHouse: follow-ups, one conversation across Streamlit ↔ Telegram.</span></p></div>
     </div>
     <div class="stack reveal" style="margin-top:28px">
       <span>🧠 <b>Ollama</b> qwen2.5-coder:14b</span>
@@ -432,7 +473,7 @@ SQL:</pre>
       <span>💬 <b>Streamlit</b></span>
       <span>✈️ <b>aiogram 3</b></span>
       <span>🐍 Python 3.14 · pydantic</span>
-      <span>✅ 38 unit-тестов</span>
+      <span>✅ 38 <span class="l-ru">unit-тестов</span><span class="l-en">unit tests</span></span>
     </div>
   </div>
 </section>
@@ -441,16 +482,16 @@ SQL:</pre>
 <footer class="foot">
   <div class="wrap">
     <div>
-      <div class="brand" style="display:flex;align-items:center;gap:11px;font-family:var(--font-display);font-weight:900;font-size:19px"><span class="dot" style="width:30px;height:30px;border-radius:9px;background:var(--brand);display:grid;place-items:center;color:#fff">◆</span> retail<span style="color:var(--brand)">_</span>ai_assistant</div>
-      <p style="max-width:44ch;color:var(--muted);margin-top:6px">Локальный AI-аналитик: text-to-SQL с двумя слоями RAG, графики и Excel, Streamlit и Telegram. Портфолио-проект.</p>
+      <div style="display:flex;align-items:center;gap:11px;font-family:var(--font-display);font-weight:900;font-size:19px;color:#fff"><span style="width:30px;height:30px;border-radius:9px;background:var(--brand);display:grid;place-items:center;color:#fff">◆</span> retail<span style="color:var(--brand)">_</span>ai_assistant</div>
+      <p style="max-width:46ch;color:var(--muted);margin-top:6px"><span class="l-ru">Локальный AI-аналитик: text-to-SQL с двумя слоями RAG, графики и Excel, Streamlit и Telegram.</span><span class="l-en">A local AI analyst: text-to-SQL with two RAG layers, charts and Excel, Streamlit and Telegram.</span></p>
     </div>
     <div style="display:flex;gap:60px;flex-wrap:wrap">
       <div>
-        <div style="color:#fff;font-weight:700;margin-bottom:10px">Разделы</div>
-        <div style="display:grid;gap:7px;font-size:14px"><a href="#problem">Задача</a><a href="#data">Данные</a><a href="#how">Пайплайн</a><a href="#metrics">Метрики</a></div>
+        <div style="color:#fff;font-weight:700;margin-bottom:10px"><span class="l-ru">Разделы</span><span class="l-en">Sections</span></div>
+        <div style="display:grid;gap:7px;font-size:14px"><a href="#problem"><span class="l-ru">Задача</span><span class="l-en">Challenge</span></a><a href="#data"><span class="l-ru">Данные</span><span class="l-en">Data</span></a><a href="#how"><span class="l-ru">Пайплайн</span><span class="l-en">Pipeline</span></a><a href="#metrics"><span class="l-ru">Метрики</span><span class="l-en">Metrics</span></a></div>
       </div>
       <div>
-        <div style="color:#fff;font-weight:700;margin-bottom:10px">Стек</div>
+        <div style="color:#fff;font-weight:700;margin-bottom:10px"><span class="l-ru">Стек</span><span class="l-en">Stack</span></div>
         <div style="display:grid;gap:7px;font-size:14px;color:var(--muted)"><span>Ollama · Groq</span><span>ClickHouse · Qdrant</span><span>Streamlit · aiogram</span></div>
       </div>
     </div>
@@ -459,9 +500,19 @@ SQL:</pre>
 </footer>
 
 <script>
+  (function(){
+    var root=document.documentElement;
+    function apply(en){
+      root.classList.toggle('en',en); root.lang=en?'en':'ru';
+      try{localStorage.setItem('lang',en?'en':'ru')}catch(e){}
+      document.querySelectorAll('.langsw button').forEach(function(b){b.classList.toggle('on',(b.dataset.l==='en')===en)});
+    }
+    document.querySelectorAll('.langsw button').forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.l==='en')})});
+    apply(root.classList.contains('en'));
+  })();
   document.documentElement.classList.add('js');
-  const io = new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
-  document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%4*40)+'ms';io.observe(el)});
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(function(el,i){el.style.transitionDelay=(i%4*40)+'ms';io.observe(el)});
 </script>
 </body>
 </html>
