@@ -1,6 +1,9 @@
 # Raw source material for the LLM Wiki (kept local, per project setup)
 raw/
 
+# Local agent instructions (kept out of the public repo)
+CLAUDE.md
+
 # Secrets
 .env
 
