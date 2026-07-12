@@ -1,0 +1,422 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retail AI Assistant — блок-схема конвейера</title>
+<style>
+  :root {
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --ground:#f3f2ee; --surface:#ffffff; --surface-2:#f9f8f4;
+    --ink:#1b1d24; --muted:#565b6b; --faint:#878c9c; --line:#e5e2da; --spine:#c4c1b6;
+    --llm:#6d4aff; --llm-bg:#efeaff;
+    --vec:#0e8f86; --vec-bg:#daf1ef;
+    --vec2:#2f66c9; --vec2-bg:#e6edfb;
+    --db:#b1740c; --db-bg:#f6ebd4;
+    --code:#248a4d; --code-bg:#dcefe3;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:#0f1015; --surface:#191b22; --surface-2:#14161d;
+      --ink:#ecedf2; --muted:#9aa0b1; --faint:#6b7181; --line:#282b35; --spine:#3d4150;
+      --llm:#a996ff; --llm-bg:#241f45;
+      --vec:#4fd6c9; --vec-bg:#0f3733;
+      --vec2:#7fa8f0; --vec2-bg:#17233f;
+      --db:#e2ab4d; --db-bg:#372c14;
+      --code:#5fd08a; --code-bg:#14331f;
+    }
+  }
+  :root[data-theme="light"]{--ground:#f3f2ee;--surface:#fff;--surface-2:#f9f8f4;--ink:#1b1d24;--muted:#565b6b;--faint:#878c9c;--line:#e5e2da;--spine:#c4c1b6;--llm:#6d4aff;--llm-bg:#efeaff;--vec:#0e8f86;--vec-bg:#daf1ef;--vec2:#2f66c9;--vec2-bg:#e6edfb;--db:#b1740c;--db-bg:#f6ebd4;--code:#248a4d;--code-bg:#dcefe3;}
+  :root[data-theme="dark"]{--ground:#0f1015;--surface:#191b22;--surface-2:#14161d;--ink:#ecedf2;--muted:#9aa0b1;--faint:#6b7181;--line:#282b35;--spine:#3d4150;--llm:#a996ff;--llm-bg:#241f45;--vec:#4fd6c9;--vec-bg:#0f3733;--vec2:#7fa8f0;--vec2-bg:#17233f;--db:#e2ab4d;--db-bg:#372c14;--code:#5fd08a;--code-bg:#14331f;}
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink); font-family:var(--font-sans); font-size:14px; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 34px 20px 90px; }
+  h1,h2,h3 { margin:0; line-height:1.15; text-wrap:balance; }
+  code,.mono{ font-family:var(--font-mono); }
+
+  header { margin-bottom: 8px; }
+  .eyebrow { font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); }
+  header h1 { font-size:clamp(23px,3.6vw,30px); font-weight:680; letter-spacing:-0.01em; margin:9px 0 6px; }
+  header p { color:var(--muted); margin:0; max-width:64ch; }
+  .legend { display:flex; gap:7px; flex-wrap:wrap; margin:16px 0 6px; align-items:center; }
+  .legend .lead { color:var(--muted); font-size:12px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:3px 9px 3px 7px; border-radius:999px; font-family:var(--font-mono); font-size:11px; }
+  .chip .dot{ width:8px;height:8px;border-radius:50%; }
+  .chip.llm{color:var(--llm);background:var(--llm-bg)} .chip.llm .dot{background:var(--llm)}
+  .chip.vec{color:var(--vec);background:var(--vec-bg)} .chip.vec .dot{background:var(--vec)}
+  .chip.vec2{color:var(--vec2);background:var(--vec2-bg)} .chip.vec2 .dot{background:var(--vec2)}
+  .chip.db{color:var(--db);background:var(--db-bg)} .chip.db .dot{background:var(--db)}
+  .chip.code{color:var(--code);background:var(--code-bg)} .chip.code .dot{background:var(--code)}
+
+  /* blocks */
+  .blk { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+  .blk.center { max-width:620px; margin-left:auto; margin-right:auto; }
+  .blk-head { padding:11px 15px 10px; display:flex; align-items:center; gap:10px; border-bottom:1px solid transparent; }
+  .badge { flex:none; width:29px; height:29px; border-radius:50%; display:grid; place-items:center; font-family:var(--font-mono); font-weight:600; font-size:13px; border:2px solid var(--spine); color:var(--muted); }
+  .blk.llm .badge{border-color:var(--llm);color:var(--llm)} .blk.vec .badge{border-color:var(--vec);color:var(--vec)}
+  .blk.vec2 .badge{border-color:var(--vec2);color:var(--vec2)} .blk.db .badge{border-color:var(--db);color:var(--db)} .blk.code .badge{border-color:var(--code);color:var(--code)}
+  .blk-head h3 { font-size:15px; font-weight:630; }
+  .tag { font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; padding:3px 7px; border-radius:5px; white-space:nowrap; margin-left:auto; }
+  .tag.llm{color:var(--llm);background:var(--llm-bg)} .tag.vec{color:var(--vec);background:var(--vec-bg)}
+  .tag.vec2{color:var(--vec2);background:var(--vec2-bg)} .tag.db{color:var(--db);background:var(--db-bg)} .tag.code{color:var(--code);background:var(--code-bg)}
+  .blk-body { padding:0 15px 14px; }
+  .role { color:var(--muted); font-size:12.5px; margin:2px 0 10px; }
+
+  .io { border:1px solid var(--line); border-radius:8px; background:var(--surface-2); margin-top:10px; }
+  .io .lab { font-family:var(--font-mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); padding:7px 11px 0; }
+  .io pre { margin:5px 0 0; padding:3px 11px 11px; font-family:var(--font-mono); font-size:11.5px; line-height:1.6; overflow-x:auto; white-space:pre; color:var(--ink); }
+  pre .k{color:var(--vec)} pre .s{color:var(--db)} pre .c{color:var(--faint)} pre .kw{color:var(--llm);font-weight:600} pre .g{color:var(--code)}
+  .note { font-size:12px; color:var(--muted); margin-top:10px; }
+  .note b{color:var(--ink)} .note .mk{color:var(--code);font-family:var(--font-mono);font-size:11px}
+  .qhero { font-size:16px; font-weight:600; color:var(--ink); padding:14px 15px; }
+  .qhero .lab{ font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin-right:8px; }
+
+  .branch { border:1px dashed var(--llm); border-radius:8px; padding:8px 11px; margin-top:10px; font-size:12px; }
+  .branch .bh{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--llm); margin-bottom:5px; }
+  .branch .now{ color:var(--ink); font-weight:600; } .branch .was{ color:var(--faint); }
+
+  /* connectors */
+  .down { display:flex; flex-direction:column; align-items:center; }
+  .down .lbl{ font-family:var(--font-mono); font-size:11px; color:var(--faint); margin:5px 0 2px; text-align:center; }
+  .down .line{ width:2px; height:20px; background:var(--spine); }
+  .down .chev{ color:var(--spine); font-size:12px; line-height:.6; }
+
+  .fork, .join { position:relative; height:38px; }
+  .fork .stem{ position:absolute; left:50%; top:0; width:2px; height:19px; background:var(--spine); transform:translateX(-50%); }
+  .fork .rail{ position:absolute; left:25%; right:25%; top:18px; height:2px; background:var(--spine); }
+  .fork .drop{ position:absolute; top:18px; width:2px; height:20px; background:var(--spine); }
+  .fork .drop.l{ left:25% } .fork .drop.r{ left:75% }
+  .fork .drop::after{ content:"▼"; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%); color:var(--spine); font-size:10px; }
+  .join .drop{ position:absolute; top:0; width:2px; height:20px; background:var(--spine); }
+  .join .drop.l{ left:25% } .join .drop.r{ left:75% }
+  .join .rail{ position:absolute; left:25%; right:25%; top:19px; height:2px; background:var(--spine); }
+  .join .stem{ position:absolute; left:50%; top:19px; width:2px; height:19px; background:var(--spine); transform:translateX(-50%); }
+  .join .stem::after{ content:"▼"; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%); color:var(--spine); font-size:10px; }
+
+  .lanes { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:640px){ .lanes{ grid-template-columns:1fr } .fork .rail,.fork .drop,.join .rail,.join .drop{ display:none } .fork .stem,.join .stem{ height:38px } }
+
+  /* assembled prompt hero */
+  .assembled { border:2px solid var(--llm); }
+  .assembled .blk-head{ background:var(--llm-bg); }
+  .seg { border-radius:8px; margin-top:10px; overflow:hidden; }
+  .seg .slab{ font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; padding:6px 11px; display:flex; justify-content:space-between; gap:10px; }
+  .seg pre{ margin:0; padding:9px 11px 12px; font-family:var(--font-mono); font-size:11px; line-height:1.55; overflow:auto; white-space:pre; }
+  .seg.sys{ background:var(--surface-2); border:1px solid var(--line); }
+  .seg.sys .slab{ color:var(--faint); } .seg.sys pre{ max-height:220px; color:var(--muted); white-space:pre-wrap; }
+  .seg.schema{ background:var(--vec-bg); border:1px solid var(--vec); }
+  .seg.schema .slab{ color:var(--vec); }
+  .seg.few{ background:var(--vec2-bg); border:1px solid var(--vec2); }
+  .seg.few .slab{ color:var(--vec2); }
+  .seg.q{ background:var(--llm-bg); border:1px solid var(--llm); }
+  .seg.q .slab{ color:var(--llm); }
+  .seg .from{ opacity:.85; }
+
+  .retry { border:1px dashed var(--db); background:var(--db-bg); color:var(--db); border-radius:8px; padding:8px 11px; margin-top:10px; font-family:var(--font-mono); font-size:11.5px; }
+
+  /* anatomy of a Qdrant point */
+  .anat { margin-top:10px; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface-2); }
+  .anat .arow { padding:8px 11px; font-family:var(--font-mono); font-size:11px; color:var(--muted); display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }
+  .anat .arow .vd { color:var(--faint); }
+  .anat .arow .eq { margin-left:auto; color:var(--code); }
+  .anat .src { padding:7px 11px; font-size:11.5px; color:var(--muted); border-top:1px dashed var(--line); }
+  .anat .src b { color:var(--ink); }
+  .anat .plab { font-family:var(--font-mono); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); padding:7px 11px 0; border-top:1px dashed var(--line); }
+  .anat pre { margin:4px 0 0; padding:2px 11px 11px; font-family:var(--font-mono); font-size:11px; line-height:1.55; overflow-x:auto; white-space:pre; color:var(--ink); }
+  .emb-v { background:var(--vec-bg); color:var(--vec); border-radius:3px; padding:0 3px; }
+  .emb-v2 { background:var(--vec2-bg); color:var(--vec2); border-radius:3px; padding:0 3px; }
+  .noemb { color:var(--faint); }
+  pre .pk { color:var(--muted); }
+
+  .chartbox svg{ width:100%; height:auto; display:block; }
+  .axis{ fill:var(--faint); font-family:var(--font-mono); font-size:9px; }
+  .kv{ display:grid; grid-template-columns:auto 1fr; gap:3px 12px; font-family:var(--font-mono); font-size:12px; padding:4px 0 2px; }
+  .kv .key{color:var(--vec)} .kv .val{color:var(--ink);overflow-x:auto} .kv .val.null{color:var(--faint)}
+  pre::-webkit-scrollbar,.seg pre::-webkit-scrollbar{height:9px;width:9px}
+  pre::-webkit-scrollbar-thumb,.seg pre::-webkit-scrollbar-thumb{background:var(--spine);border-radius:6px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Retail AI Assistant · core.ask(question) → AssistantResponse</div>
+    <h1>Блок-схема: путь запроса и что реально уходит в LLM</h1>
+    <p>Каждый блок — процесс. На шаге RAG поток разветвляется на два независимых поиска и снова сливается. Блок «Сборка промпта» показывает <b>точный текст</b>, который отправляется модели.</p>
+    <div class="legend">
+      <span class="lead">цвет = исполнитель:</span>
+      <span class="chip llm"><span class="dot"></span>LLM</span>
+      <span class="chip vec"><span class="dot"></span>Qdrant · schema RAG</span>
+      <span class="chip vec2"><span class="dot"></span>Qdrant · few-shot RAG</span>
+      <span class="chip db"><span class="dot"></span>ClickHouse</span>
+      <span class="chip code"><span class="dot"></span>детерминированный код</span>
+    </div>
+  </header>
+
+  <!-- INPUT -->
+  <div class="blk center">
+    <div class="qhero"><span class="lab">вопрос</span>Покажи график выручки по месяцам за 2025 год</div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- 0 CONDENSE -->
+  <div class="blk center llm">
+    <div class="blk-head"><span class="badge">0</span><h3>Condense — контекст</h3><span class="tag llm">LLM · JSON</span></div>
+    <div class="blk-body">
+      <div class="role">Уточнение к прошлому ходу переписывает в самодостаточный вопрос. Истории нет → без изменений.</div>
+      <div class="io"><div class="lab">out</div><pre>{ <span class="k">"followup"</span>: <span class="kw">false</span>, <span class="k">"question"</span>: <span class="s">"…выручки по месяцам за 2025"</span> }</pre></div>
+      <div class="branch"><div class="bh">↳ ветка follow-up</div><span class="was">«топ-10 магазинов» → «добавь UPT»</span> → <span class="now">«топ-10 магазинов…, включая UPT»</span></div>
+    </div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- 1 INTENT -->
+  <div class="blk center llm">
+    <div class="blk-head"><span class="badge">1</span><h3>Маршрутизация по интенту</h3><span class="tag llm">LLM · JSON · t=0.1</span></div>
+    <div class="blk-body">
+      <div class="role">Классифицирует по оригинальной фразе. Слово «график» → нужен PNG.</div>
+      <div class="io"><div class="lab">out</div><pre>{ <span class="k">"intent"</span>: <span class="s">"sql_with_chart"</span>, <span class="k">"reply"</span>: <span class="s">""</span> }</pre></div>
+    </div>
+  </div>
+  <div class="down"><span class="lbl">вопрос → вектор LaBSE (768d) · один вектор в два индекса</span><span class="line"></span></div>
+
+  <!-- FORK -->
+  <div class="fork"><span class="stem"></span><span class="rail"></span><span class="drop l"></span><span class="drop r"></span></div>
+
+  <!-- 2 RAG LANES -->
+  <div class="lanes">
+    <div class="blk vec">
+      <div class="blk-head"><span class="badge">2a</span><h3>Schema RAG</h3><span class="tag vec">Qdrant · retail_schema</span></div>
+      <div class="blk-body">
+        <div class="role">Поиск по «паспортам таблиц» → откуда брать данные. 6 точек (по таблице).</div>
+        <div class="io"><div class="lab">результат · top-3</div><pre><span class="c">0.412</span>  plans
+<span class="c">0.301</span>  sales   <span class="c">← выручка</span>
+<span class="c">0.283</span>  employees</pre></div>
+
+        <div class="anat">
+          <div class="arow"><span class="vd">вектор&nbsp;768d:</span> [-0.046, -0.058, -0.022, 0.030, …]<span class="eq">= эмбеддинг</span></div>
+          <div class="src">эмбеддится → <span class="emb-v">payload.document</span> целиком (весь паспорт таблицы). Тот же текст и в векторе, и в payload.</div>
+          <div class="plab">payload точки (пример: sales)</div>
+<pre>{
+  <span class="pk">"table"</span>: "sales",
+  <span class="pk">"document"</span>: <span class="emb-v">"Таблица: sales
+    Факт продаж (~1 млн строк, 3 года)…
+    Колонки: sale_id, sale_date, store_id,
+      quantity, price, discount_pct …"</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="blk vec2">
+      <div class="blk-head"><span class="badge">2b</span><h3>Few-shot RAG</h3><span class="tag vec2">Qdrant · retail_few_shot</span></div>
+      <div class="blk-body">
+        <div class="role">Поиск по вопросам-образцам → как писать SQL этого класса. 34 точки.</div>
+        <div class="io"><div class="lab">результат · top-3</div><pre><span class="c">0.945</span>  Покажи выручку по месяцам…
+<span class="c">0.787</span>  Общий отчёт по месяцам…
+<span class="c">0.781</span>  Прирост выручки м/м…</pre></div>
+
+        <div class="anat">
+          <div class="arow"><span class="vd">вектор&nbsp;768d:</span> [-0.057, -0.013, -0.023, 0.034, …]<span class="eq">= эмбеддинг</span></div>
+          <div class="src">эмбеддится → <span class="emb-v2">только payload.question</span>. <span class="noemb">sql и tags</span> лежат в payload и в поиске <b>не участвуют</b>.</div>
+          <div class="plab">payload точки (пример)</div>
+<pre>{
+  <span class="pk">"question"</span>: <span class="emb-v2">"Топ-10 товаров по выручке."</span>,
+  <span class="pk">"sql"</span>: <span class="noemb">"SELECT p.product_name AS product,
+     round(sum(sa.quantity*sa.price*
+     (1-sa.discount_pct/100))) AS revenue
+     FROM sales sa JOIN products p …
+     GROUP BY product ORDER BY revenue
+     DESC LIMIT 10"</span>,
+  <span class="pk">"tags"</span>: <span class="noemb">["join", "top_n"]</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOIN -->
+  <div class="join"><span class="drop l"></span><span class="drop r"></span><span class="rail"></span><span class="stem"></span></div>
+
+  <!-- 3 ASSEMBLED PROMPT (HERO) -->
+  <div class="blk assembled code">
+    <div class="blk-head"><span class="badge">3</span><h3>Сборка промпта — что уходит в LLM</h3><span class="tag code">код · строковая сборка</span></div>
+    <div class="blk-body">
+      <div class="role">Два потока сливаются: системные правила + найденные схемы (2a) + найденные примеры (2b) + вопрос. Ниже — <b>дословно</b> два сообщения запроса.</div>
+
+      <div class="seg sys">
+        <div class="slab"><span>system message</span><span>src/prompts/sql_system.txt · {TODAY} подставлен</span></div>
+<pre>You are an expert ClickHouse SQL analyst for a jewelry retail company.
+Translate the user's question (usually in Russian) into ONE valid ClickHouse
+SQL query over the `retail_demo` database.
+
+Current date: 2026-07-12 (2026, month 7).
+
+- Return ONLY the SQL. Single read-only SELECT / WITH ... SELECT.
+- Never INSERT/UPDATE/DELETE/DROP/ALTER, system.* tables, external functions.
+- Revenue = sum(quantity * price * (1 - discount_pct / 100)); round(...) money.
+- plan-vs-actual: aggregate plans &amp; sales in SEPARATE subqueries, then join —
+  NEVER join plans→sales before summing plan_revenue (fan-out).
+- KPI: ATV = revenue/transactions, UPT = units/transactions, ASP = revenue/units.
+  «Полный отчёт» = all metrics in one query.
+- «Категория товара» = products.category (NOT a departments join).
+- «Топ N» без метрики = ORDER BY revenue DESC. «Добавь X» добавляет колонки,
+  не меняя сортировку и не убирая существующие.
+- Time: «прошлый месяц/год» = CALENDAR period; «за последние N дней» = rolling;
+  месяц без года = его последнее наступление относительно текущей даты.
+- Window fn нельзя внутри GROUP BY select-листа. Always LIMIT (&lt;= 1000).
+
+You will be given the most relevant table schemas and a few example
+question → SQL pairs. Use them, then produce the SQL for the user's question.</pre>
+      </div>
+
+      <div class="seg schema">
+        <div class="slab"><span>user message · часть 1</span><span class="from">← вставлено из 2a Schema RAG</span></div>
+<pre>SCHEMA (most relevant tables):
+Таблица: plans
+План выручки по магазинам на каждый месяц (план vs факт).
+Колонки:
+  - store_id (UInt32): магазин (FK на stores)
+  - month (Date): первый день месяца
+  - plan_revenue (UInt64): плановая выручка, руб.
+
+Таблица: sales
+Факт продаж (~1 млн строк, 3 года). Выручка = quantity * price * (1 - discount_pct/100).
+Колонки:
+  - sale_id (UInt64): идентификатор продажи
+  - sale_date (Date): дата продажи
+  - sale_datetime (DateTime): точное время продажи
+  - store_id (UInt32) · employee_id (UInt32) · product_id (UInt32)
+  - quantity (UInt8): количество единиц
+  - price (UInt32): фактическая цена продажи, руб.
+  - discount_pct (UInt8): скидка, % (0-30)
+
+Таблица: employees
+Справочник сотрудников. store_id NULL для офиса.
+Колонки: employee_id · full_name · department_id · store_id (Nullable) ·
+  position · hire_date · salary (UInt32)
+Примеры значений position: руководитель отдела, старший продавец, специалист</pre>
+      </div>
+
+      <div class="seg few">
+        <div class="slab"><span>user message · часть 2</span><span class="from">← вставлено из 2b Few-shot RAG</span></div>
+<pre>EXAMPLES (similar question → reference SQL):
+Вопрос: Покажи выручку по месяцам за 2025 год.
+SQL: SELECT toStartOfMonth(sale_date) AS month,
+       round(sum(quantity * price * (1 - discount_pct / 100))) AS revenue
+     FROM sales WHERE toYear(sale_date) = 2025 GROUP BY month ORDER BY month
+
+Вопрос: Общий отчет по месяцам за 2025 год.
+SQL: SELECT toStartOfMonth(sale_date) AS month, count() AS transactions,
+       sum(quantity) AS units, round(sum(...)) AS revenue,
+       round(sum(...) / count()) AS ATV, round(sum(quantity)/count(),2) AS UPT,
+       round(sum(...) / sum(quantity)) AS ASP
+     FROM sales WHERE toYear(sale_date) = 2025 GROUP BY month ORDER BY month
+
+Вопрос: Прирост выручки месяц к месяцу за 2025 год.
+SQL: SELECT month, revenue,
+       revenue - lagInFrame(revenue,1,0) OVER (ORDER BY month) AS mom_change
+     FROM (SELECT toStartOfMonth(sale_date) AS month, round(sum(...)) AS revenue
+           FROM sales WHERE toYear(sale_date)=2025 GROUP BY month) ORDER BY month</pre>
+      </div>
+
+      <div class="seg q">
+        <div class="slab"><span>user message · часть 3</span><span class="from">← вопрос пользователя</span></div>
+<pre>QUESTION: Покажи график выручки по месяцам за 2025 год
+SQL:</pre>
+      </div>
+    </div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- 4 LLM -> SQL -->
+  <div class="blk center llm">
+    <div class="blk-head"><span class="badge">4</span><h3>LLM генерирует SQL</h3><span class="tag llm">LLM · t=0.1</span></div>
+    <div class="blk-body">
+      <div class="role">Модель дописывает после «SQL:» одну строку запроса.</div>
+      <div class="io"><div class="lab">out · попытка 1</div><pre><span class="kw">SELECT</span> toYYYYMM(sale_date) <span class="kw">AS</span> month,
+  round(sum(quantity*price*(1-discount_pct/100))) <span class="kw">AS</span> revenue
+<span class="kw">FROM</span> sales <span class="kw">WHERE</span> toYear(sale_date)=2025
+<span class="kw">GROUP BY</span> month <span class="kw">ORDER BY</span> month <span class="kw">LIMIT</span> 1000</pre></div>
+    </div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- 5 VALIDATOR -->
+  <div class="blk center code">
+    <div class="blk-head"><span class="badge">5</span><h3>Валидатор</h3><span class="tag code">regex · не LLM</span></div>
+    <div class="blk-body">
+      <div class="role">Только SELECT/WITH · запрет DDL/DML, system.*, url()/file()/s3() · форс LIMIT. → passed</div>
+    </div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- 6 CLICKHOUSE -->
+  <div class="blk center db">
+    <div class="blk-head"><span class="badge">6</span><h3>Исполнение · ClickHouse</h3><span class="tag db">row policy: sale_date ≤ today()</span></div>
+    <div class="blk-body">
+      <div class="io"><div class="lab">12 строк</div><pre>202501  2 348 561 780
+202503  5 134 326 555   <span class="c">← Фев–Мар</span>
+  …
+202512  6 072 134 585   <span class="c">← дек-пик</span></pre></div>
+      <div class="retry">↺ при ошибке ClickHouse текст ошибки уходит <b>назад в блок 4</b> (LLM), ≤ 3 попытки самопочинки. Здесь — успех с 1-й.</div>
+    </div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- 7 FACTS -->
+  <div class="blk center code">
+    <div class="blk-head"><span class="badge">7</span><h3>Проверенные факты</h3><span class="tag code">Python</span></div>
+    <div class="blk-body">
+      <div class="role">Max/min/сумма/среднее считает код (не LLM) и кладёт в промпт сводки.</div>
+      <div class="io"><div class="lab">facts → в сводку</div><pre>revenue: МАКС = 6 072 134 585 (стр.12 — декабрь)
+         мин  = 2 348 561 780 (стр.1  — январь)
+         сумма = 41 749 250 310 · среднее = 3 479 104 192</pre></div>
+    </div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- 8 SUMMARY -->
+  <div class="blk center llm">
+    <div class="blk-head"><span class="badge">8</span><h3>Сводка</h3><span class="tag llm">LLM · t=0.3</span></div>
+    <div class="blk-body">
+      <div class="role">Промпт сводки = summarize.txt + <b>блок фактов</b> + первые 50 строк. Числа о максимуме — только из фактов.</div>
+      <div class="io"><div class="lab">текст</div><pre style="white-space:pre-wrap">За 2025 год выручка растёт к концу года 📈. Максимум ≈ 6 млрд ₽ — в декабре. Средняя месячная ≈ 3,5 млрд ₽, за год ≈ 41,7 млрд ₽ 💰.</pre></div>
+    </div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- 9 CHART -->
+  <div class="blk center llm">
+    <div class="blk-head"><span class="badge">9</span><h3>График</h3><span class="tag llm">LLM спек → matplotlib</span></div>
+    <div class="blk-body">
+      <div class="role">LLM выбирает тип (chart_spec.txt): {"chart_type":"line","x":"month","y":"revenue"}. Код рендерит PNG.</div>
+      <div class="io chartbox"><div class="lab">artifacts/chart_….png</div>
+        <svg viewBox="0 0 560 130" role="img" aria-label="Выручка по 12 месяцам 2025">
+          <line x1="20" y1="108" x2="544" y2="108" stroke="var(--line)" stroke-width="1"/>
+          <polygon points="20,108 67.6,60 115.3,32 162.9,90 210.5,90 258.2,100 305.8,104 353.5,97 401.1,90 448.7,82 496.4,68 544,12 544,108 20,108" fill="var(--code)" opacity="0.10"/>
+          <polyline points="20,108 67.6,60 115.3,32 162.9,90 210.5,90 258.2,100 305.8,104 353.5,97 401.1,90 448.7,82 496.4,68 544,12" fill="none" stroke="var(--code)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="115.3" cy="32" r="3" fill="var(--code)"/><circle cx="544" cy="12" r="3.6" fill="var(--code)"/>
+          <text class="axis" x="103" y="26">март</text><text class="axis" x="486" y="9">дек · 6,1 млрд</text>
+          <text class="axis" x="16" y="123">янв</text><text class="axis" x="530" y="123">дек</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="down"><span class="line"></span><span class="chev">▼</span></div>
+
+  <!-- FINAL -->
+  <div class="blk center code" style="border-color:var(--ink)">
+    <div class="blk-head"><span class="badge" style="border-color:var(--ink);color:var(--ink);border-radius:9px">✓</span><h3>AssistantResponse</h3><span class="tag code">dataclass → интерфейс</span></div>
+    <div class="blk-body">
+      <div class="kv">
+        <span class="key">text</span><span class="val">«…за год ≈ 41,7 млрд ₽»</span>
+        <span class="key">sql</span><span class="val">SELECT toYYYYMM(sale_date)…</span>
+        <span class="key">table_preview</span><span class="val">[12 строк]</span>
+        <span class="key">chart_path</span><span class="val">/artifacts/…png</span>
+        <span class="key">excel_path</span><span class="val null">None</span>
+        <span class="key">error</span><span class="val null">None</span>
+      </div>
+      <div class="note"><span class="mk">+ лог:</span> ход пишется в ClickHouse <b>chat_history</b> — общая история Streamlit ↔ Telegram и контекст для следующего follow-up (блок 0).</div>
+    </div>
+  </div>
+
+</div>
